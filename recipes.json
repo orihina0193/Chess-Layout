@@ -1,1 +1,152 @@
-
+[
+  {
+    "id": "r1",
+    "name": "鳳凰の聖盾 (Phoenix Sacred Shield)",
+    "colors": {
+      "red": 3,
+      "blue": 4,
+      "green": 0,
+      "yellow": 2,
+      "purple": 0,
+      "white": 1
+    },
+    "effect": "全体防御力を +12% 上昇、全員の被ダメージを 5% 減少",
+    "type": "support",
+    "priorityScore": 4
+  },
+  {
+    "id": "r2",
+    "name": "飛燕の疾風弓 (Swift Gale Bow)",
+    "colors": {
+      "red": 2,
+      "blue": 0,
+      "green": 4,
+      "yellow": 0,
+      "purple": 2,
+      "white": 1
+    },
+    "effect": "弓兵の攻撃速度を +18% 向上、射程距離を微増",
+    "type": "archer",
+    "priorityScore": 5
+  },
+  {
+    "id": "r3",
+    "name": "王宮重装歩兵の号令 (Royal Infantry Command)",
+    "colors": {
+      "red": 5,
+      "blue": 3,
+      "green": 0,
+      "yellow": 0,
+      "purple": 0,
+      "white": 2
+    },
+    "effect": "歩兵の最大HP +15%、さらに戦闘開始時にシールドを展開",
+    "type": "infantry",
+    "priorityScore": 5
+  },
+  {
+    "id": "r4",
+    "name": "突撃大竜槍 (Rider Dragon Spear)",
+    "colors": {
+      "red": 4,
+      "blue": 0,
+      "green": 3,
+      "yellow": 0,
+      "purple": 2,
+      "white": 0
+    },
+    "effect": "騎兵の突撃攻撃力を +20% 上昇、ノックバック効果を付与",
+    "type": "cavalry",
+    "priorityScore": 4
+  },
+  {
+    "id": "r5",
+    "name": "大賢者の深淵書 (Archmage Abyss Tome)",
+    "colors": {
+      "red": 0,
+      "blue": 5,
+      "green": 0,
+      "yellow": 2,
+      "purple": 3,
+      "white": 0
+    },
+    "effect": "魔道士の魔法ダメージ +22%、スキルのクールタイムを 10% 秒短縮",
+    "type": "mage",
+    "priorityScore": 5
+  },
+  {
+    "id": "r6",
+    "name": "暁の祝福円陣 (Sanctuary Rune Circle)",
+    "colors": {
+      "red": 0,
+      "blue": 3,
+      "green": 0,
+      "yellow": 5,
+      "purple": 0,
+      "white": 1
+    },
+    "effect": "味方ヒーラーの回復性能を +25% 向上、弱体効果を毎秒確率で治癒",
+    "type": "support",
+    "priorityScore": 3
+  },
+  {
+    "id": "r7",
+    "name": "影忍者の暗殺ダガー (Assassin Shadow Dagger)",
+    "colors": {
+      "red": 2,
+      "blue": 0,
+      "green": 2,
+      "yellow": 0,
+      "purple": 5,
+      "white": 0
+    },
+    "effect": "弓兵と騎兵のクリティカル確率が +12% 上昇、会心ダメージ +15%",
+    "type": "archer",
+    "priorityScore": 4
+  },
+  {
+    "id": "r8",
+    "name": "巨石兵の加護 (Colossus Ward)",
+    "colors": {
+      "red": 1,
+      "blue": 4,
+      "green": 2,
+      "yellow": 2,
+      "purple": 0,
+      "white": 0
+    },
+    "effect": "歩兵の物理防御力 +20%、さらに毎秒最大生命力の 1% を自己再生",
+    "type": "infantry",
+    "priorityScore": 3
+  },
+  {
+    "id": "r9",
+    "name": "烈火の焦熱術式 (Incineration Matrix)",
+    "colors": {
+      "red": 3,
+      "blue": 3,
+      "green": 0,
+      "yellow": 0,
+      "purple": 1,
+      "white": 0
+    },
+    "effect": "魔道士の攻撃対象に「焦熱」状態（毎秒持続ダメージ）を付与",
+    "type": "mage",
+    "priorityScore": 3
+  },
+  {
+    "id": "r10",
+    "name": "疾風迅雷の遊撃哨 (Thunder Vanguard Signet)",
+    "colors": {
+      "red": 2,
+      "blue": 0,
+      "green": 5,
+      "yellow": 0,
+      "purple": 0,
+      "white": 1
+    },
+    "effect": "騎兵の移動速度 +15%、致命的な一撃を回避する確率が 5% 発生",
+    "type": "cavalry",
+    "priorityScore": 4
+  }
+]
