@@ -1,5 +1,47 @@
 [
   {
+    "id": "custom_1780832897911",
+    "name": "[Shooter] ATK 20.0%",
+    "cost": {
+      "red": 4,
+      "blue": 0,
+      "green": 0,
+      "yellow": 0,
+      "purple": 0
+    },
+    "effect": {
+      "target": "Shooter",
+      "type": "ATK",
+      "value": 20
+    },
+    "grid": [
+      [
+        1,
+        1,
+        1,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ]
+  },
+  {
     "id": "def_recipe_1",
     "name": "[Fighter] ATK 6.5%",
     "cost": {
