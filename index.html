@@ -1,386 +1,854 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chess Layout Optimizer</title>
+<!doctype html>
+<html lang="ja" class="h-full">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chess Layout Optimizer | Geometric Balance</title>
+    <!-- Tailwind CSS v4 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Elegant Typography and Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
     <style>
-        :root {
-            --primary: #2563eb;
-            --bg: #f8fafc;
-            --card: #ffffff;
-            --text: #1e293b;
-            --red: #ef4444; --blue: #3b82f6; --green: #10b981; --yellow: #f59e0b; --purple: #8b5cf6;
-        }
-        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; }
-        .container { max-width: 800px; margin: 0 auto; }
-        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .card { background: var(--card); padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 15px; }
-        
-        .grid-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
-        .input-group { display: flex; flex-direction: column; }
-        label { font-size: 0.8rem; font-weight: bold; margin-bottom: 4px; }
-        input, select, button { padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; }
-        button { background: var(--primary); color: white; border: none; cursor: pointer; transition: 0.2s; }
-        button:hover { opacity: 0.9; }
-        button.secondary { background: #64748b; }
-
-        /* Board Styling */
-        .board-container { overflow-x: auto; margin-top: 20px; }
-        .board { display: grid; grid-template-columns: repeat(5, 50px); grid-template-rows: repeat(7, 50px); gap: 2px; background: #cbd5e1; border: 4px solid #475569; width: fit-content; margin: 0 auto; }
-        .cell { width: 50px; height: 50px; background: white; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; text-align: center; overflow: hidden; }
-        
-        /* Admin Section */
-        #admin-section { display: none; border-top: 2px dashed #cbd5e1; margin-top: 30px; padding-top: 20px; }
-        .recipe-item { border-bottom: 1px solid #eee; padding: 8px 0; display: flex; justify-content: space-between; }
-        
-        .hidden { display: none !important; }
-        .recipe-grid-editor { display: grid; grid-template-columns: repeat(4, 30px); gap: 2px; margin-top: 10px; }
-        .grid-pixel { width: 30px; height: 30px; border: 1px solid #ccc; cursor: pointer; }
-        .grid-pixel.active { background: var(--primary); }
+      :root {
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      }
+      .font-display {
+        font-family: 'Space Grotesk', 'Inter', sans-serif;
+      }
+      .font-mono {
+        font-family: 'JetBrains Mono', monospace;
+      }
+      /* Custom fine-scrollbar styling to keep the layout absolutely elegant */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body class="h-full bg-slate-50 text-slate-900 flex flex-col overflow-hidden leading-normal">
 
-<div class="container">
-    <header>
-        <h1>Chess Optimizer</h1>
-        <button id="mode-btn" onclick="toggleAdminMode()" class="secondary">管理モード</button>
+    <!-- Header Section (Geometric Slate-900) -->
+    <header class="h-16 bg-slate-900 text-white flex items-center justify-between px-8 border-b border-slate-800 shrink-0 shadow-md">
+      <div class="flex items-center gap-3">
+        <!-- Geometric Rotated Emblem -->
+        <div class="w-8 h-8 bg-blue-500 flex items-center justify-center rotate-45 border border-blue-400">
+          <div class="w-4 h-4 bg-white -rotate-45"></div>
+        </div>
+        <div>
+          <h1 class="text-md font-extrabold tracking-widest uppercase font-display">
+            Chess Layout Optimizer
+          </h1>
+          <span class="text-[9px] text-blue-400 tracking-widest font-mono block -mt-1 font-bold">PORTABLE VERSION</span>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-6">
+        <div class="flex items-center gap-2 text-xs font-semibold">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span class="opacity-75 tracking-widest text-[9px] font-mono">STANDALONE DEPLOY READY</span>
+        </div>
+        <div class="hidden sm:block text-[11px] font-bold text-slate-400 border border-slate-800 px-3 py-1 font-mono uppercase tracking-wider">
+          Geometric Balance Theme
+        </div>
+      </div>
     </header>
 
-    <!-- 計算・閲覧モード -->
-    <div id="user-section">
-        <div class="card">
-            <h3>1. 手持ちのチェス数</h3>
-            <div class="grid-inputs">
-                <div class="input-group"><label style="color:var(--red)">赤</label><input type="number" id="inv-red" value="0" min="0"></div>
-                <div class="input-group"><label style="color:var(--blue)">青</label><input type="number" id="inv-blue" value="0" min="0"></div>
-                <div class="input-group"><label style="color:var(--green)">緑</label><input type="number" id="inv-green" value="0" min="0"></div>
-                <div class="input-group"><label style="color:var(--yellow)">黄</label><input type="number" id="inv-yellow" value="0" min="0"></div>
-                <div class="input-group"><label style="color:var(--purple)">紫</label><input type="number" id="inv-purple" value="0" min="0"></div>
+    <!-- Main Workspace Container -->
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+      
+      <!-- Left Sidebar: Controls & Live Inventory -->
+      <aside class="w-full lg:w-[325px] bg-white border-r border-slate-200 p-6 flex flex-col shrink-0 overflow-y-auto">
+        
+        <!-- Piece Inventory Section -->
+        <div class="mb-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xs font-extrabold text-slate-450 uppercase tracking-widest">
+              Piece Inventory
+            </h2>
+            <div class="flex gap-1">
+              <button onclick="setGlobalPreset('clear')" class="text-[9px] font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 px-1.5 py-0.5 rounded transition cursor-pointer select-none">Clr</button>
+              <button onclick="setGlobalPreset('low')" class="text-[9px] font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 px-1.5 py-0.5 rounded transition cursor-pointer select-none">Min</button>
+              <button onclick="setGlobalPreset('mid')" class="text-[9px] font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 px-1.5 py-0.5 rounded transition cursor-pointer select-none">Mid</button>
+              <button onclick="setGlobalPreset('high')" class="text-[9px] font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 px-1.5 py-0.5 rounded transition cursor-pointer select-none">Max</button>
             </div>
-            <h3 style="margin-top:15px">2. 特化選択</h3>
-            <div class="grid-inputs">
-                <select id="spec-target">
-                    <option value="None">なし</option>
-                    <option value="Fighter">ファイター</option>
-                    <option value="Rider">ライダー</option>
-                    <option value="Shooter">シューター</option>
-                </select>
-                <button onclick="calculateOptimization()">配置計算実行</button>
-            </div>
+          </div>
+
+          <div class="space-y-3" id="inventory-controls-root">
+            <!-- Rendered Dynamically via JS to ensure seamless mutation -->
+          </div>
         </div>
 
-        <div id="result-area" class="card hidden">
-            <h3>最適配置結果</h3>
-            <div id="result-stats"></div>
-            <div class="board-container">
-                <div id="chess-board" class="board"></div>
-            </div>
+        <!-- Spec Optimization Select -->
+        <div class="mb-6 border-t border-slate-100 pt-5">
+          <h2 class="text-xs font-bold text-slate-450 uppercase tracking-widest mb-3">
+            Optimization Target
+          </h2>
+          <select id="spec-target-selector" onchange="onTargetSelectChange()" class="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider outline-none focus:border-slate-900 rounded cursor-pointer transition-colors">
+            <option value="Fighter">ファイター特化 (Fighter focused)</option>
+            <option value="Rider">ライダー特化 (Rider focused)</option>
+            <option value="Shooter">シューター特化 (Shooter focused)</option>
+            <option value="None">なし (Balanced All-Army)</option>
+          </select>
+          <p class="text-[10px] text-slate-400 leading-relaxed mt-2.5">
+            ※ 対象部隊の配置スコア基準価値が <strong class="text-slate-600">2.0倍 (2x)</strong> となり、盤面マトリクス空間への適合が最優先されます。
+          </p>
         </div>
+
+        <!-- Layout Rotation Config Card -->
+        <div class="mb-6 p-4 bg-slate-50 border border-slate-200 rounded">
+          <h3 class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            ⚙️ レイアウト変形規則
+          </h3>
+          <div class="flex items-center justify-between pt-1">
+            <div>
+              <span class="text-xs font-bold text-slate-700 block">自動回転の許容 (90°間隔)</span>
+              <span class="text-[9px] text-slate-400 block mt-0.5">残マス形状へのパズル適合度を高めます</span>
+            </div>
+            <input type="checkbox" id="allow-rotation-checkbox" checked onchange="onRotationCheckboxChange()" class="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer" />
+          </div>
+        </div>
+
+        <!-- Actions Trigger Footer inside Sidebar -->
+        <div class="mt-auto pt-4 border-t border-slate-150">
+          <button onclick="recalculateOptimization()" class="w-full bg-slate-900 text-white py-3.5 font-bold text-xs uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer select-none">
+            ▶ Calculate Optimal Layout
+          </button>
+        </div>
+
+      </aside>
+
+      <!-- Center Panel: The Main Grid Interactive Board (7 x 5 Matrix) -->
+      <main class="flex-1 flex flex-col bg-slate-100 p-8 items-center justify-center relative overflow-y-auto min-h-[450px]">
+        
+        <!-- Header status metric overlay -->
+        <div class="absolute top-6 left-8 select-none">
+          <div class="flex items-center gap-2 text-slate-400 uppercase tracking-widest text-[10px] font-extrabold">
+            <span class="w-8 h-px bg-slate-300"></span>
+            Board View Matrix (7 x 5)
+          </div>
+        </div>
+
+        <!-- Visual Core Chess Frame -->
+        <div class="bg-white p-3 sm:p-6 shadow-md sm:shadow-2xl border border-slate-200 rounded-xl max-w-full overflow-hidden">
+          <div class="relative">
+            
+            <!-- Column Names A to G -->
+            <div class="flex mb-1.5 items-center select-none">
+              <!-- Dummy left spacer aligning with row indicators -->
+              <div class="w-5 min-[380px]:w-6 sm:w-8"></div>
+              <div class="grid grid-cols-7 gap-1 sm:gap-1.5 w-full">
+                <div class="text-center text-[9px] sm:text-[10px] font-mono font-bold text-slate-400">A</div>
+                <div class="text-center text-[9px] sm:text-[10px] font-mono font-bold text-slate-400">B</div>
+                <div class="text-center text-[9px] sm:text-[10px] font-mono font-bold text-slate-400">C</div>
+                <div class="text-center text-[9px] sm:text-[10px] font-mono font-bold text-slate-400">D</div>
+                <div class="text-center text-[9px] sm:text-[10px] font-mono font-bold text-slate-400">E</div>
+                <div class="text-center text-[9px] sm:text-[10px] font-mono font-bold text-slate-400">F</div>
+                <div class="text-center text-[9px] sm:text-[10px] font-mono font-bold text-slate-400">G</div>
+              </div>
+            </div>
+
+            <!-- Main Board Canvas cells and Left side numbers wrapped in modular flex rows -->
+            <div id="board-rows-container" class="flex flex-col gap-1 sm:gap-1.5 p-1.5 bg-slate-200 border-2 border-slate-300 rounded-lg">
+              <!-- Appended dynamically via recalculateOptimization -->
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Informative note underneath the layout mapping -->
+        <div class="mt-4 text-[10px] text-slate-400 flex items-center gap-1.5 font-bold uppercase tracking-wider select-none">
+          ℹ️ ホバーするか、左ペインの在庫数を変更するとリアルタイムに再計算とバフ蓄積ゲージが連動します
+        </div>
+
+      </main>
+
+      <!-- Right Sidebar: Calculated Aggregation & Recipe Details -->
+      <aside class="w-full lg:w-[310px] bg-slate-900 text-white p-6 shrink-0 flex flex-col border-l border-slate-800 overflow-y-auto">
+        
+        <!-- Live Statistics dashboard section -->
+        <div class="mb-6">
+          <h2 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">
+            Optimization Stats
+          </h2>
+          <div class="grid grid-cols-2 gap-3.5">
+            <div class="bg-slate-800/80 p-4 rounded border border-slate-800">
+              <span class="text-slate-400 text-[10px] uppercase tracking-wider block">Space Used</span>
+              <div id="metric-space-percent" class="text-2xl font-mono font-bold text-slate-100 mt-1">
+                --
+              </div>
+            </div>
+            <div class="bg-slate-800/80 p-4 rounded border border-slate-800">
+              <span class="text-slate-400 text-[10px] uppercase tracking-wider block">Active Recipes</span>
+              <div id="metric-recipes-count" class="text-2xl font-mono font-bold text-slate-100 mt-1">
+                --
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Render active blocks or recipe details on hover -->
+        <div class="mb-6 border-t border-slate-800 pt-5">
+          <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">
+            Selected Block Detail
+          </h3>
+          <div id="recipe-hover-detail-card" class="min-h-[110px] flex items-center justify-center">
+            <!-- Appended programmatically upon hovering board cells -->
+            <div class="bg-slate-800/30 w-full p-4 rounded text-center text-xs border border-dashed border-slate-800 text-slate-400 italic">
+              盤面のカラーブロックをホバーすると割り当てレシピ詳細を抽出します
+            </div>
+          </div>
+        </div>
+
+        <!-- Real-time progress results representation -->
+        <div class="mb-6 border-t border-slate-800 pt-5 flex-1">
+          <h2 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">
+            Calculated Buffs
+          </h2>
+          
+          <div class="space-y-4" id="buffs-progress-bars-container">
+            <!-- Elements dynamically loaded via compile loop inside Vanilla JS -->
+          </div>
+        </div>
+
+        <!-- Static details describing sync structure -->
+        <div class="mt-auto border-t border-slate-850 pt-5">
+          <div class="p-3 bg-blue-950/20 border border-blue-500/20 text-blue-250/80 rounded">
+            <p class="text-[10px] leading-relaxed">
+              この static index.html はリポジトリへ配置するだけで GitHub Pages でホスト可能です。クライアントサイド完結型高速アルゴリズムを導入しています。
+            </p>
+          </div>
+        </div>
+
+      </aside>
+
     </div>
 
-    <!-- 管理モード -->
-    <div id="admin-section">
-        <div class="card">
-            <h3>GitHub 設定</h3>
-            <div class="grid-inputs">
-                <input type="password" id="gh-token" placeholder="GitHub Personal Access Token">
-                <input type="text" id="gh-repo" placeholder="ユーザー名/リポジトリ名">
-                <button onclick="saveSettings()">設定保存</button>
-            </div>
-            <p style="font-size:0.7rem">※トークンはセッション中のみ保持されます</p>
-        </div>
+    <!-- Active Toast notifications helper -->
+    <div id="toast-wrapper" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-        <div class="card">
-            <h3>レシピ登録</h3>
-            <div class="grid-inputs">
-                <div class="input-group"><label>対象</label><select id="reg-target" onchange="updateRecipeName()"><option>Fighter</option><option>Rider</option><option>Shooter</option><option>Troop</option></select></div>
-                <div class="input-group"><label>種別</label><select id="reg-type" onchange="updateRecipeName()"><option>ATK</option><option>DEF</option><option>HP</option></select></div>
-                <div class="input-group"><label>数値(%)</label><input type="number" id="reg-val" value="0" step="0.1" oninput="updateRecipeName()"></div>
-            </div>
-            <div class="input-group" style="margin-top:10px">
-                <label>生成される名前</label>
-                <input type="text" id="reg-name" readonly style="background:#eee">
-            </div>
-            
-            <h4 style="margin-bottom:5px">コスト</h4>
-            <div class="grid-inputs">
-                <input type="number" id="cost-red" placeholder="赤">
-                <input type="number" id="cost-blue" placeholder="青">
-                <input type="number" id="cost-green" placeholder="緑">
-                <input type="number" id="cost-yellow" placeholder="黄">
-                <input type="number" id="cost-purple" placeholder="紫">
-            </div>
-
-            <h4 style="margin-bottom:5px">形状 (4x4)</h4>
-            <div id="editor-grid" class="recipe-grid-editor"></div>
-            
-            <button onclick="addRecipe()" style="margin-top:15px; width:100%">レシピを保存</button>
-        </div>
-
-        <div class="card">
-            <h3>登録済みレシピ</h3>
-            <div id="recipe-list"></div>
-        </div>
-    </div>
-</div>
-
-<script>
-    let recipes = [];
-    const PIN = "1234"; // 管理モード用PINコード
-    const BOARD_W = 5;
-    const BOARD_H = 7;
-
-    // 初期化
-    window.onload = async () => {
-        initEditorGrid();
-        await loadRecipes();
-    };
-
-    function initEditorGrid() {
-        const grid = document.getElementById('editor-grid');
-        for (let i = 0; i < 16; i++) {
-            const div = document.createElement('div');
-            div.className = 'grid-pixel';
-            div.onclick = () => div.classList.toggle('active');
-            grid.appendChild(div);
+    <!-- Embedded high performance solver inside single file package for distribution -->
+    <script>
+      // 1. Database of Default Core Recipes matching fully specified presets
+      const BUILTIN_RECIPES = [
+        {
+          id: "recipe_1",
+          name: "[Fighter] ATK 12.0%",
+          cost: { red: 3, blue: 0, green: 0, yellow: 0, purple: 0 },
+          effect: { target: "Fighter", type: "ATK", value: 12.0 },
+          grid: [
+            [1, 1],
+            [1, 0]
+          ]
+        },
+        {
+          id: "recipe_2",
+          name: "[Rider] DEF 15.0%",
+          cost: { red: 0, blue: 4, green: 0, yellow: 0, purple: 0 },
+          effect: { target: "Rider", type: "DEF", value: 15.0 },
+          grid: [
+            [2, 2],
+            [2, 2]
+          ]
+        },
+        {
+          id: "recipe_3",
+          name: "[Shooter] HP 18.0%",
+          cost: { red: 0, blue: 0, green: 3, yellow: 0, purple: 1 },
+          effect: { target: "Shooter", type: "HP", value: 18.0 },
+          grid: [
+            [3, 3, 3],
+            [0, 5, 0]
+          ]
+        },
+        {
+          id: "recipe_4",
+          name: "[Troop] ATK 8.0%",
+          cost: { red: 1, blue: 1, green: 1, yellow: 1, purple: 0 },
+          effect: { target: "Troop", type: "ATK", value: 8.0 },
+          grid: [
+            [1, 2],
+            [3, 4]
+          ]
+        },
+        {
+          id: "recipe_5",
+          name: "[Rider] ATK 10.0%",
+          cost: { red: 0, blue: 3, green: 0, yellow: 0, purple: 0 },
+          effect: { target: "Rider", type: "ATK", value: 10.0 },
+          grid: [
+            [2, 2, 2]
+          ]
+        },
+        {
+          id: "recipe_6",
+          name: "[Fighter] HP 20.0%",
+          cost: { red: 4, blue: 0, green: 0, yellow: 0, purple: 2 },
+          effect: { target: "Fighter", type: "HP", value: 20.0 },
+          grid: [
+            [1, 1, 1],
+            [5, 0, 5],
+            [1, 0, 0]
+          ]
+        },
+        {
+          id: "recipe_7",
+          name: "[Shooter] ATK 14.0%",
+          cost: { red: 0, blue: 0, green: 4, yellow: 0, purple: 0 },
+          effect: { target: "Shooter", type: "ATK", value: 14.0 },
+          grid: [
+            [3, 3],
+            [3, 3]
+          ]
         }
-    }
+      ];
 
-    function updateRecipeName() {
-        const target = document.getElementById('reg-target').value;
-        const type = document.getElementById('reg-type').value;
-        const val = document.getElementById('reg-val').value;
-        document.getElementById('reg-name').value = `[${target}] ${type} ${val}%`;
-    }
+      // Initial mutable page states
+      let pageInventory = {
+        red: 12,
+        blue: 10,
+        green: 8,
+        yellow: 8,
+        purple: 6
+      };
 
-    // 認証・モード切替
-    function toggleAdminMode() {
-        const current = document.getElementById('admin-section').style.display;
-        if (current === 'block') {
-            document.getElementById('admin-section').style.display = 'none';
-            document.getElementById('mode-btn').innerText = "管理モード";
-        } else {
-            const input = prompt("PINコードを入力してください");
-            if (input === PIN) {
-                document.getElementById('admin-section').style.display = 'block';
-                document.getElementById('mode-btn').innerText = "閲覧モードへ";
-                document.getElementById('gh-token').value = sessionStorage.getItem('gh_token') || '';
-                document.getElementById('gh-repo').value = localStorage.getItem('gh_repo') || '';
-            } else {
-                alert("認証失敗");
-            }
+      let selectedSpecTarget = "Fighter";
+      let allowShapeRotation = true;
+      let activePlacements = [];
+      let calculatedBoardData = [];
+
+      // 2. Auxiliary Rotate multi dimension array grid
+      function rotateMatrix(matrix) {
+        const r = matrix.length;
+        const c = matrix[0].length;
+        const result = Array(c).fill(0).map(() => Array(r).fill(0));
+        for (let i = 0; i < r; i++) {
+          for (let j = 0; j < c; j++) {
+            result[j][r - 1 - i] = matrix[i][j];
+          }
         }
-    }
+        return result;
+      }
 
-    function saveSettings() {
-        sessionStorage.setItem('gh_token', document.getElementById('gh-token').value);
-        localStorage.setItem('gh_repo', document.getElementById('gh-repo').value);
-        alert("設定を保存しました。");
-        loadRecipes();
-    }
-
-    // API連携
-    async function loadRecipes() {
-        const repo = localStorage.getItem('gh_repo');
-        if (!repo) return;
-        try {
-            const res = await fetch(`https://raw.githubusercontent.com/${repo}/main/recipes.json?t=${Date.now()}`);
-            if (res.ok) {
-                recipes = await res.json();
-                renderRecipeList();
-            }
-        } catch (e) { console.error("Fetch error", e); }
-    }
-
-    async function addRecipe() {
-        const token = sessionStorage.getItem('gh_token');
-        const repo = localStorage.getItem('gh_repo');
-        if (!token || !repo) return alert("GitHub設定が必要です");
-
-        const gridPixels = document.querySelectorAll('#editor-grid .grid-pixel');
-        let gridData = [];
-        for (let i = 0; i < 4; i++) {
-            gridData.push(Array.from(gridPixels).slice(i*4, i*4+4).map(el => el.classList.contains('active') ? 1 : 0));
+      // Generate all 4 possible isometric orientations of the matrix pattern
+      function generateOrientations(matrix) {
+        const orientations = [matrix];
+        let current = matrix;
+        for (let i = 0; i < 3; i++) {
+          current = rotateMatrix(current);
+          orientations.push(current);
         }
-
-        const newRecipe = {
-            id: 'id_' + Date.now(),
-            name: document.getElementById('reg-name').value,
-            cost: {
-                red: parseInt(document.getElementById('cost-red').value) || 0,
-                blue: parseInt(document.getElementById('cost-blue').value) || 0,
-                green: parseInt(document.getElementById('cost-green').value) || 0,
-                yellow: parseInt(document.getElementById('cost-yellow').value) || 0,
-                purple: parseInt(document.getElementById('cost-purple').value) || 0
-            },
-            effect: {
-                target: document.getElementById('reg-target').value,
-                type: document.getElementById('reg-type').value,
-                value: parseFloat(document.getElementById('reg-val').value) || 0
-            },
-            grid: gridData
-        };
-
-        recipes.push(newRecipe);
-        await saveToGitHub();
-    }
-
-    async function saveToGitHub() {
-        const token = sessionStorage.getItem('gh_token');
-        const repo = localStorage.getItem('gh_repo');
-        const path = 'recipes.json';
         
-        // Get SHA
-        let sha = "";
-        const getRes = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
-            headers: { 'Authorization': `token ${token}` }
-        });
-        if (getRes.ok) {
-            const getData = await getRes.json();
-            sha = getData.sha;
+        // Remove structural duplicates
+        const uniqueOrientations = [];
+        const seen = new Set();
+        for (let o of orientations) {
+          const str = JSON.stringify(o);
+          if (!seen.has(str)) {
+            seen.add(str);
+            uniqueOrientations.push(o);
+          }
         }
+        return uniqueOrientations;
+      }
 
-        const putRes = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
-            method: 'PUT',
-            headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                message: "Update recipes",
-                content: btoa(unescape(encodeURIComponent(JSON.stringify(recipes, null, 2)))),
-                sha: sha
-            })
-        });
-
-        if (putRes.ok) {
-            alert("保存完了");
-            renderRecipeList();
-        } else {
-            alert("保存失敗");
-        }
-    }
-
-    function renderRecipeList() {
-        const list = document.getElementById('recipe-list');
-        list.innerHTML = recipes.map(r => `
-            <div class="recipe-item">
-                <span>${r.name}</span>
-                <button class="secondary" onclick="deleteRecipe('${r.id}')" style="padding:2px 8px; font-size:0.7rem">削除</button>
-            </div>
-        `).join('');
-    }
-
-    async function deleteRecipe(id) {
-        if (!confirm("削除しますか？")) return;
-        recipes = recipes.filter(r => r.id !== id);
-        await saveToGitHub();
-    }
-
-    // 計算ロジック
-    function calculateOptimization() {
-        const inventory = {
-            red: parseInt(document.getElementById('inv-red').value) || 0,
-            blue: parseInt(document.getElementById('inv-blue').value) || 0,
-            green: parseInt(document.getElementById('inv-green').value) || 0,
-            yellow: parseInt(document.getElementById('inv-yellow').value) || 0,
-            purple: parseInt(document.getElementById('inv-purple').value) || 0
-        };
-        const spec = document.getElementById('spec-target').value;
-
-        // 1. スコア計算とフィルタリング
-        let candidates = recipes.filter(r => {
-            return Object.keys(inventory).every(color => r.cost[color] <= inventory[color]);
-        }).map(r => {
-            let score = r.effect.value;
-            if (r.effect.target === spec) score *= 2; // 特化は重み2倍
-            else if (r.effect.target === 'Troop') score *= 1.2; // 全軍は1.2倍
-            const size = r.grid.flat().filter(v => v === 1).length;
-            return { ...r, score, efficiency: score / size };
-        });
-
-        // 効率の良い順にソート（簡易的な貪欲法）
-        candidates.sort((a, b) => b.efficiency - a.efficiency);
-
-        const board = Array(BOARD_H).fill(0).map(() => Array(BOARD_W).fill(null));
-        const usedInventory = { red:0, blue:0, green:0, yellow:0, purple:0 };
-        const placedRecipes = [];
-
-        // 配置試行
-        for (const recipe of candidates) {
-            // 在庫チェック
-            const canAfford = Object.keys(inventory).every(c => usedInventory[c] + recipe.cost[c] <= inventory[c]);
-            if (!canAfford) continue;
-
-            const pos = findFit(board, recipe.grid);
-            if (pos) {
-                placeOnBoard(board, recipe, pos.r, pos.c);
-                placedRecipes.push(recipe);
-                Object.keys(inventory).forEach(c => usedInventory[c] += recipe.cost[c]);
+      // 3. Grid bounds crop helper to remove extra whitespace border around custom creations
+      function cropCompactGrid(grid) {
+        let minR = 99, maxR = -1;
+        let minC = 99, maxC = -1;
+        for (let r = 0; r < grid.length; r++) {
+          for (let c = 0; c < grid[0].length; c++) {
+            if (grid[r][c] > 0) {
+              if (r < minR) minR = r;
+              if (r > maxR) maxR = r;
+              if (c < minC) minC = c;
+              if (c > maxC) maxC = c;
             }
+          }
         }
+        if (maxR === -1) return [[0]];
+        const cropped = [];
+        for (let r = minR; r <= maxR; r++) {
+          cropped.push(grid[r].slice(minC, maxC + 1));
+        }
+        return cropped;
+      }
 
-        renderBoard(board, placedRecipes);
-    }
+      // 4. Standalone dynamic Solver optimization algorithm (Match with react-app implementation)
+      function runSolverEngine(recipes, inventory, specTarget, allowRot) {
+        const BOARD_W = 7;
+        const BOARD_H = 5;
 
-    function findFit(board, grid) {
-        const rows = grid.length;
-        const cols = grid[0].length;
-        // グリッドの実サイズ（トリミング考慮）
-        let maxR = 0, maxC = 0;
-        grid.forEach((row, r) => row.forEach((v, c) => { if(v){ maxR=Math.max(maxR,r); maxC=Math.max(maxC,c); }}));
-        
-        for (let r = 0; r <= BOARD_H - (maxR+1); r++) {
-            for (let c = 0; c <= BOARD_W - (maxC+1); c++) {
-                let ok = true;
-                for (let i = 0; i <= maxR; i++) {
-                    for (let j = 0; j <= maxC; j++) {
-                        if (grid[i][j] === 1 && board[r+i][c+j] !== null) {
-                            ok = false; break;
-                        }
+        // Initialize state variables
+        const board = Array(BOARD_H).fill(null).map(() => Array(BOARD_W).fill(null));
+        const currentInv = { ...inventory };
+
+        // Score based prioritizing sort logic
+        const evaluatedRecipes = recipes.map(r => {
+          let score = r.effect.value;
+          if (specTarget !== "None" && r.effect.target === specTarget) {
+            score *= 2.0; // Dynamic 200% focus priority multiplier
+          }
+          if (r.effect.target === "Troop") {
+            score *= 1.25; 
+          }
+          
+          const size = r.grid.flat().filter(v => v > 0).length;
+          const efficiency = size > 0 ? score / size : 0;
+
+          return {
+            recipe: r,
+            score: score,
+            efficiency: efficiency
+          };
+        });
+
+        // First sort descending based on absolute score priority efficiency
+        evaluatedRecipes.sort((a, b) => b.score - a.score || b.efficiency - a.efficiency);
+
+        const placedOnBoard = [];
+        const unplacedOnBoard = [];
+        const usedInventoryAmt = { red: 0, blue: 0, green: 0, yellow: 0, purple: 0 };
+
+        for (let entry of evaluatedRecipes) {
+          const item = entry.recipe;
+          
+          // Cost validation
+          if (
+            currentInv.red < item.cost.red ||
+            currentInv.blue < item.cost.blue ||
+            currentInv.green < item.cost.green ||
+            currentInv.yellow < item.cost.yellow ||
+            currentInv.purple < item.cost.purple
+          ) {
+            unplacedOnBoard.push(item);
+            continue;
+          }
+
+          const cropped = cropCompactGrid(item.grid);
+          const orientations = allowRot ? generateOrientations(cropped) : [cropped];
+          let successfullyPlaced = false;
+
+          // Attempt fitting search inside grid mapping coordinates
+          for (let orientation of orientations) {
+            const h = orientation.length;
+            const w = orientation[0].length;
+
+            if (h > BOARD_H || w > BOARD_W) continue;
+
+            for (let r = 0; r <= BOARD_H - h; r++) {
+              for (let c = 0; c <= BOARD_W - w; c++) {
+                
+                // Inspect cell overlays
+                let overlaps = false;
+                for (let i = 0; i < h; i++) {
+                  for (let j = 0; j < w; j++) {
+                    if (orientation[i][j] > 0 && board[r + i][c + j] !== null) {
+                      overlaps = true;
+                      break;
                     }
-                    if (!ok) break;
+                  }
+                  if (overlaps) break;
                 }
-                if (ok) return { r, c };
+
+                if (!overlaps) {
+                  // Placed! Map elements to board matrix
+                  for (let i = 0; i < h; i++) {
+                    for (let j = 0; j < w; j++) {
+                      if (orientation[i][j] > 0) {
+                        board[r + i][c + j] = {
+                          recipeId: item.id,
+                          recipeName: item.name,
+                          effect: item.effect,
+                          blockType: orientation[i][j]
+                        };
+                      }
+                    }
+                  }
+
+                  // Consume resources
+                  currentInv.red -= item.cost.red;
+                  currentInv.blue -= item.cost.blue;
+                  currentInv.green -= item.cost.green;
+                  currentInv.yellow -= item.cost.yellow;
+                  currentInv.purple -= item.cost.purple;
+
+                  usedInventoryAmt.red += item.cost.red;
+                  usedInventoryAmt.blue += item.cost.blue;
+                  usedInventoryAmt.green += item.cost.green;
+                  usedInventoryAmt.yellow += item.cost.yellow;
+                  usedInventoryAmt.purple += item.cost.purple;
+
+                  placedOnBoard.push(item);
+                  successfullyPlaced = true;
+                  break;
+                }
+              }
+              if (successfullyPlaced) break;
             }
+            if (successfullyPlaced) break;
+          }
+
+          if (!successfullyPlaced) {
+            unplacedOnBoard.push(item);
+          }
         }
-        return null;
-    }
 
-    function placeOnBoard(board, recipe, startR, startC) {
-        recipe.grid.forEach((row, i) => {
-            row.forEach((val, j) => {
-                if (val === 1) board[startR+i][startC+j] = { name: recipe.name, id: recipe.id };
-            });
-        });
-    }
+        return {
+          board: board,
+          placedRecipes: placedOnBoard,
+          unplacedRecipes: unplacedOnBoard,
+          usedInventory: usedInventoryAmt
+        };
+      }
 
-    function renderBoard(board, placed) {
-        const container = document.getElementById('chess-board');
-        const stats = document.getElementById('result-stats');
-        const area = document.getElementById('result-area');
-        area.classList.remove('hidden');
-        container.innerHTML = '';
+      // Render Piece adjustments
+      function renderInventoryFormFields() {
+        const root = document.getElementById('inventory-controls-root');
+        if (!root) return;
 
-        board.flat().forEach(cell => {
-            const div = document.createElement('div');
-            div.className = 'cell';
-            if (cell) {
-                div.innerText = cell.name;
-                div.style.background = `hsl(${(cell.id.split('_')[1] % 360)}, 70%, 85%)`;
+        const specParams = [
+          { key: 'red', label: '赤', dotClass: 'bg-rose-500' },
+          { key: 'blue', label: '青', dotClass: 'bg-blue-500' },
+          { key: 'green', label: '緑', dotClass: 'bg-emerald-500' },
+          { key: 'yellow', label: '黄', dotClass: 'bg-amber-500' },
+          { key: 'purple', label: '紫', dotClass: 'bg-purple-500' }
+        ];
+
+        root.innerHTML = specParams.map(item => `
+          <div class="flex items-center justify-between p-2 bg-slate-50 border border-slate-200 rounded">
+            <label class="text-xs font-semibold text-slate-700 flex items-center gap-2">
+              <span class="w-3.5 h-3.5 ${item.dotClass} rounded-sm"></span>
+              <span>${item.label}</span>
+            </label>
+            <div class="flex items-center gap-1 bg-white border border-slate-200 rounded overflow-hidden select-none">
+              <button onclick="adjustInventoryAmount('${item.key}', -1)" class="w-7 h-7 bg-slate-50 text-slate-500 hover:bg-slate-100 text-xs font-bold transition flex items-center justify-center cursor-pointer select-none">-</button>
+              <input type="number" id="input-qty-${item.key}" value="${pageInventory[item.key]}" onchange="onQtyInputChange('${item.key}')" class="w-10 text-center text-xs font-mono font-bold text-slate-800 outline-none border-none py-0.5" />
+              <button onclick="adjustInventoryAmount('${item.key}', 1)" class="w-7 h-7 bg-slate-50 text-slate-500 hover:bg-slate-100 text-xs font-bold transition flex items-center justify-center cursor-pointer select-none">+</button>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      function adjustInventoryAmount(key, delta) {
+        pageInventory[key] = Math.max(0, pageInventory[key] + delta);
+        const input = document.getElementById(`input-qty-${key}`);
+        if (input) input.value = pageInventory[key];
+        recalculateOptimization();
+      }
+
+      function onQtyInputChange(key) {
+        const input = document.getElementById(`input-qty-${key}`);
+        if (input) {
+          const val = parseInt(input.value) || 0;
+          pageInventory[key] = Math.max(0, val);
+          input.value = pageInventory[key];
+        }
+        recalculateOptimization();
+      }
+
+      function setGlobalPreset(preset) {
+        if (preset === 'clear') {
+          pageInventory = { red: 0, blue: 0, green: 0, yellow: 0, purple: 0 };
+        } else if (preset === 'low') {
+          pageInventory = { red: 4, blue: 4, green: 4, yellow: 4, purple: 4 };
+        } else if (preset === 'mid') {
+          pageInventory = { red: 10, blue: 10, green: 10, yellow: 10, purple: 14 };
+        } else if (preset === 'high') {
+          pageInventory = { red: 20, blue: 20, green: 20, yellow: 20, purple: 20 };
+        }
+        
+        renderInventoryFormFields();
+        recalculateOptimization();
+        showNotification('success', '配列用在庫の初期値を適用しました。');
+      }
+
+      function onTargetSelectChange() {
+        const selector = document.getElementById('spec-target-selector');
+        if (selector) {
+          selectedSpecTarget = selector.value;
+          recalculateOptimization();
+        }
+      }
+
+      function onRotationCheckboxChange() {
+        const cb = document.getElementById('allow-rotation-checkbox');
+        if (cb) {
+          allowShapeRotation = cb.checked;
+          recalculateOptimization();
+        }
+      }
+
+      // Show Custom Toast notifications in viewport margins
+      function showNotification(type, text) {
+        const wrapper = document.getElementById('toast-wrapper');
+        if (!wrapper) return;
+
+        const el = document.createElement('div');
+        el.className = `flex items-center gap-2.5 px-4 py-3 rounded border shadow-lg backdrop-blur-md transition-all duration-300 pointer-events-auto shrink-0 max-w-sm text-xs font-bold uppercase tracking-wider ${
+          type === 'success' ? 'bg-emerald-50 text-emerald-900 border-emerald-300' : 'bg-blue-50 text-blue-900 border-blue-300'
+        }`;
+        
+        el.innerHTML = `
+          <span>${type === 'success' ? '➔' : 'ℹ️'}</span>
+          <span>${text}</span>
+        `;
+        
+        wrapper.appendChild(el);
+        setTimeout(() => {
+          el.style.opacity = '0';
+          setTimeout(() => el.remove(), 300);
+        }, 3500);
+      }
+
+      // Display selected block details
+      function hoverBoardCell(recipeId) {
+        const container = document.getElementById('recipe-hover-detail-card');
+        if (!container) return;
+
+        if (!recipeId) {
+          container.innerHTML = `
+            <div class="bg-slate-800/30 w-full p-4 rounded text-center text-xs border border-dashed border-slate-800 text-slate-400 italic font-medium">
+              盤面のカラーブロックをホバーすると割り当てレシピ詳細を抽出します
+            </div>
+          `;
+          return;
+        }
+
+        const recipe = BUILTIN_RECIPES.find(r => r.id === recipeId);
+        if (!recipe) return;
+
+        // Map resource layout costs
+        const costList = Object.entries(recipe.cost)
+          .map(([color, count]) => {
+            if (count === 0) return '';
+            let dot = 'bg-slate-500';
+            if (color === 'red') dot = 'bg-rose-500';
+            else if (color === 'blue') dot = 'bg-blue-500';
+            else if (color === 'green') dot = 'bg-emerald-500';
+            else if (color === 'yellow') dot = 'bg-amber-500';
+            else dot = 'bg-purple-500';
+
+            return `
+              <div class="flex items-center gap-1 bg-slate-900 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold text-slate-200 border border-slate-750">
+                <span class="w-1.5 h-1.5 rounded-full ${dot}"></span>
+                <span>${count}</span>
+              </div>
+            `;
+          }).join('');
+
+        container.innerHTML = `
+          <div class="bg-slate-800 p-4 rounded border border-slate-700/50 w-full">
+            <span class="text-[9px] text-slate-400 uppercase font-mono block tracking-widest">[RECIPE NAME]</span>
+            <h4 class="text-xs font-bold text-white uppercase mt-0.5 tracking-wide font-display">${recipe.name}</h4>
+            <div class="h-px bg-slate-700/60 my-2.5"></div>
+            <div class="space-y-1.5 text-xs text-slate-300">
+              <div class="flex justify-between">
+                <span class="opacity-75">効果対象:</span>
+                <span class="font-bold text-yellow-400 font-mono">${recipe.effect.target === 'Troop' ? '部隊' : recipe.effect.target} (${recipe.effect.type})</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="opacity-75">バフ効力:</span>
+                <span class="font-bold text-white font-mono">+${recipe.effect.value.toFixed(1)}%</span>
+              </div>
+              <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-700/30">
+                <span class="opacity-75 text-[10px] uppercase font-bold tracking-wider">配分ブロック:</span>
+                <div class="flex gap-1">${costList}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Recalculate optimizer logic and compile UI mapping
+      function recalculateOptimization() {
+        const results = runSolverEngine(BUILTIN_RECIPES, pageInventory, selectedSpecTarget, allowShapeRotation);
+        
+        calculatedBoardData = results.board;
+        activePlacements = results.placedRecipes;
+
+        // 1. Compile 7x5 Chess Board cells with responsive row wrappers
+        const matrixContainer = document.getElementById('board-rows-container');
+        if (matrixContainer) {
+          matrixContainer.innerHTML = '';
+          
+          for (let r = 0; r < 5; r++) {
+            // Build a flex container row
+            const rowWrapper = document.createElement('div');
+            rowWrapper.className = 'flex gap-1 sm:gap-1.5 items-center';
+            
+            // Left row header pointer label
+            const rowLabel = document.createElement('div');
+            rowLabel.className = 'w-5 min-[380px]:w-6 sm:w-8 text-center text-[90%] font-mono font-bold text-slate-400 select-none';
+            rowLabel.innerText = r + 1;
+            rowWrapper.appendChild(rowLabel);
+
+            // Container for 7 columns inside this row
+            const gridWrapper = document.createElement('div');
+            gridWrapper.className = 'grid grid-cols-7 gap-1 sm:gap-1.5 flex-1';
+
+            for (let c = 0; c < 7; c++) {
+              const cell = results.board[r][c];
+              const cellContainer = document.createElement('div');
+              
+              let bgThemeClasses = 'bg-slate-50 border-slate-200/50 text-slate-350 hover:bg-slate-100';
+              if (cell) {
+                const blockType = cell.blockType || 0;
+                if (blockType === 1) bgThemeClasses = 'bg-rose-100 text-rose-800 border-rose-200 hover:bg-rose-200/60';
+                else if (blockType === 2) bgThemeClasses = 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200/60';
+                else if (blockType === 3) bgThemeClasses = 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200/60';
+                else if (blockType === 4) bgThemeClasses = 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200/60';
+                else if (blockType === 5) bgThemeClasses = 'bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200/60';
+                else {
+                  const target = cell.effect.target;
+                  if (target === 'Fighter') bgThemeClasses = 'bg-rose-100 text-rose-800 border-rose-200 hover:bg-rose-200/60';
+                  else if (target === 'Rider') bgThemeClasses = 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200/60';
+                  else if (target === 'Shooter') bgThemeClasses = 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200/60';
+                  else if (target === 'Troop') bgThemeClasses = 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200/60';
+                  else bgThemeClasses = 'bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200/60';
+                }
+              }
+
+              cellContainer.className = `w-[34px] h-[34px] min-[380px]:w-[42px] min-[380px]:h-[42px] sm:w-[50px] sm:h-[50px] md:w-14 md:h-14 lg:w-16 lg:h-16 flex flex-col items-center justify-center text-[10px] font-bold border rounded transition-all duration-150 relative cursor-pointer select-none ${bgThemeClasses}`;
+              
+              if (cell) {
+                cellContainer.onmouseenter = () => hoverBoardCell(cell.recipeId);
+                cellContainer.onmouseleave = () => hoverBoardCell(null);
+                
+                let blockDotColor = 'bg-slate-400';
+                if (cell.blockType === 1) blockDotColor = 'bg-rose-500';
+                else if (cell.blockType === 2) blockDotColor = 'bg-blue-500';
+                else if (cell.blockType === 3) blockDotColor = 'bg-emerald-500';
+                else if (cell.blockType === 4) blockDotColor = 'bg-amber-500';
+                else if (cell.blockType === 5) blockDotColor = 'bg-purple-500';
+
+                cellContainer.innerHTML = `
+                  <span class="absolute top-0.5 right-0.5 w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full border border-white shadow-sm ${blockDotColor}"></span>
+                  <div class="text-center w-full px-0.5 leading-none">
+                    <span class="text-[7px] sm:text-[8px] opacity-75 font-semibold uppercase tracking-wider block">${cell.effect.target === 'Troop' ? '部隊' : cell.effect.target.slice(0, 3)}</span>
+                    <span class="font-mono text-[7.5px] min-[380px]:text-[8.5px] sm:text-[10px] font-extrabold mt-0.5 block truncate">${cell.effect.type} ${cell.effect.value.toFixed(1)}%</span>
+                  </div>
+                `;
+              } else {
+                cellContainer.innerHTML = '<span class="opacity-25 font-mono text-[11px]">+</span>';
+              }
+              
+              gridWrapper.appendChild(cellContainer);
             }
-            container.appendChild(div);
-        });
+            rowWrapper.appendChild(gridWrapper);
+            matrixContainer.appendChild(rowWrapper);
+          }
+        }
 
-        const totalBuff = placed.reduce((acc, r) => {
-            const key = `${r.effect.target}_${r.effect.type}`;
-            acc[key] = (acc[key] || 0) + r.effect.value;
-            return acc;
-        }, {});
+        // 2. Metrics calculation
+        const occupiedCount = results.board.flat().filter(x => x !== null).length;
+        const fillPercent = Math.round((occupiedCount / 35) * 100);
+        
+        const spaceMetric = document.getElementById('metric-space-percent');
+        const countMetric = document.getElementById('metric-recipes-count');
+        if (spaceMetric) spaceMetric.innerText = `${fillPercent}%`;
+        if (countMetric) countMetric.innerText = `${results.placedRecipes.length} / ${BUILTIN_RECIPES.length}`;
 
-        stats.innerHTML = `<strong>使用レシピ数: ${placed.length}</strong><br>` + 
-            Object.entries(totalBuff).map(([k, v]) => `${k}: +${v.toFixed(1)}%`).join(' | ');
-    }
-</script>
+        // 3. Aggregate calculated buffs progress values
+        const aggregatedStats = {};
+        for (let placement of results.placedRecipes) {
+          const key = `${placement.effect.target}_${placement.effect.type}`;
+          aggregatedStats[key] = (aggregatedStats[key] || 0) + placement.effect.value;
+        }
 
-</body>
+        const progressContainer = document.getElementById('buffs-progress-bars-container');
+        if (progressContainer) {
+          progressContainer.innerHTML = '';
+          const entries = Object.entries(aggregatedStats);
+          
+          if (entries.length === 0) {
+            progressContainer.innerHTML = `
+              <div class="text-xs text-slate-500 italic py-2">
+                現在、最適配置で活性化されているレシピはありません。
+              </div>
+            `;
+          } else {
+            const getSortIndex = (key) => {
+              const [target, type] = key.split('_');
+              const isSpec = (selectedSpecTarget !== 'None' && target === selectedSpecTarget);
+              
+              if (isSpec) {
+                if (type === 'ATK') return 1;
+                if (type === 'DEF') return 2;
+                if (type === 'HP') return 3;
+              }
+              
+              if (target === 'Fighter') {
+                if (type === 'ATK') return 10;
+                if (type === 'DEF') return 11;
+                if (type === 'HP') return 12;
+              }
+              if (target === 'Rider') {
+                if (type === 'ATK') return 20;
+                if (type === 'DEF') return 21;
+                if (type === 'HP') return 22;
+              }
+              if (target === 'Shooter') {
+                if (type === 'ATK') return 30;
+                if (type === 'DEF') return 31;
+                if (type === 'HP') return 32;
+              }
+              
+              if (target === 'Troop') {
+                if (type === 'DEF') return 100;
+                if (type === 'HP') return 101;
+                if (type === 'ATK') return 102;
+              }
+              
+              return 200;
+            };
+
+            const sortedEntries = entries
+              .filter(([_, val]) => Number(val) > 0)
+              .sort(([keyA], [keyB]) => getSortIndex(keyA) - getSortIndex(keyB));
+
+            progressContainer.innerHTML = sortedEntries.map(([key, val]) => {
+              const [target, type] = key.split('_');
+              const isSpec = target === selectedSpecTarget;
+              const valNum = Number(val);
+
+              let dotColor = 'bg-emerald-500';
+              if (target === 'Troop') dotColor = 'bg-amber-400';
+              else if (target === 'Fighter') dotColor = 'bg-rose-500';
+              else if (target === 'Rider') dotColor = 'bg-blue-500';
+
+              return `
+                <div class="flex items-center justify-between p-2 rounded text-xs transition-colors duration-150 ${
+                  isSpec 
+                    ? 'bg-slate-800 border border-slate-700/60 shadow-sm' 
+                    : 'bg-slate-900/40 border border-slate-800/40'
+                }">
+                  <span class="flex items-center gap-1.5 font-bold text-slate-200">
+                    <span class="w-1.5 h-1.5 rounded-full ${dotColor}"></span>
+                    ${target === 'Troop' ? '部隊' : target} ${type}
+                  </span>
+                  <span class="font-mono font-bold text-slate-300 text-right">+${valNum.toFixed(1)}%</span>
+                </div>
+              `;
+            }).join('');
+          }
+        }
+      }
+
+      // On Initial load hook
+      window.addEventListener('DOMContentLoaded', () => {
+        renderInventoryFormFields();
+        recalculateOptimization();
+      });
+    </script>
+  </body>
 </html>
