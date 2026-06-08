@@ -2,137 +2,95 @@
 <html lang="ja" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Puzzles & Survival Chess Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        .chess-circle { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-        .color-1 { background-color: #ef4444; } /* Red */
-        .color-2 { background-color: #3b82f6; } /* Blue */
-        .color-3 { background-color: #22c55e; } /* Green */
-        .color-4 { background-color: #eab308; } /* Yellow */
-        .color-5 { background-color: #a855f7; } /* Purple */
-        .color-0 { background-color: #1f2937; } /* Empty */
+        .cell { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .bg-0 { background: #374151; } .bg-1 { background: #ef4444; } .bg-2 { background: #3b82f6; } 
+        .bg-3 { background: #22c55e; } .bg-4 { background: #eab308; } .bg-5 { background: #a855f7; }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-200 min-h-screen p-4">
+<body class="bg-slate-950 text-slate-200 p-6">
+    <div class="max-w-5xl mx-auto">
+        <header class="flex justify-between items-center mb-6">
+            <h1 class="text-xl font-black">CHESS LAYOUT MANAGER</h1>
+            <button onclick="document.getElementById('admin-modal').classList.remove('hidden')" class="text-xs bg-slate-800 px-4 py-2 rounded">管理設定</button>
+        </header>
 
-<div class="max-w-4xl mx-auto">
-    <header class="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
-        <h1 class="text-xl font-black text-white">CHESS LAYOUT MANAGER</h1>
-        <div class="flex items-center gap-2">
-            <button id="global-save-btn" onclick="pushToDatabaseGitHub()" class="hidden px-3 py-1.5 bg-emerald-600 rounded-xl text-[11px] font-bold shadow-lg hover:bg-emerald-700">GitHubへ保存</button>
-            <button onclick="toggleAdminStatusAction()" class="px-3 py-1.5 rounded-xl border border-slate-700 text-[10px] font-bold">管理者ログイン</button>
+        <div class="grid md:grid-cols-2 gap-8">
+            <section>
+                <h2 class="text-sm font-bold mb-2">フルレイアウト (5x7)</h2>
+                <div id="full-board" class="grid grid-cols-7 gap-1 bg-slate-900 p-2 rounded w-fit"></div>
+                <div id="stats" class="mt-4 text-xs bg-slate-900 p-4 rounded"></div>
+            </section>
+            <section>
+                <h2 class="text-sm font-bold mb-2">レシピ一覧</h2>
+                <div id="recipe-list" class="space-y-2"></div>
+            </section>
         </div>
-    </header>
-
-    <div class="grid md:grid-cols-2 gap-8">
-        <section class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
-            <select id="recipe-select" class="w-full bg-slate-800 p-2 rounded-lg mb-4 text-sm" onchange="renderRecipe()">
-                <option value="">レシピを選択してください</option>
-            </select>
-            <div id="grid-display" class="grid grid-cols-4 gap-2 justify-items-center mb-6"></div>
-            <div id="stats-display" class="text-xs text-slate-400 space-y-1"></div>
-        </section>
-
-        <section id="config-panel" class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
-            <h2 class="text-sm font-bold mb-4 text-indigo-400">GitHub 設定</h2>
-            <input type="text" id="cfg-owner" placeholder="Owner" class="w-full bg-slate-800 p-2 mb-2 rounded text-xs">
-            <input type="text" id="cfg-repo" placeholder="Repo" class="w-full bg-slate-800 p-2 mb-2 rounded text-xs">
-            <input type="password" id="cfg-token" placeholder="Personal Access Token" class="w-full bg-slate-800 p-2 mb-4 rounded text-xs">
-            <button onclick="saveSettings()" class="w-full bg-indigo-600 py-2 rounded-lg text-xs font-bold">設定を保存</button>
-        </section>
     </div>
-</div>
 
-<div id="login-modal" class="hidden fixed inset-0 bg-slate-950/80 flex items-center justify-center">
-    <div class="bg-white p-6 rounded-2xl text-slate-900 w-80">
-        <h3 class="text-sm font-bold mb-4">管理者ログイン</h3>
-        <input type="password" id="login-pin" maxlength="4" placeholder="PIN" class="w-full p-2 border rounded mb-4 text-center font-black text-xl">
-        <button onclick="submitLogin()" class="w-full bg-indigo-600 text-white py-2 rounded-lg font-bold">認証</button>
+    <div id="admin-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4">
+        <div class="bg-slate-900 p-6 rounded-lg w-full max-w-sm">
+            <h2 class="font-bold mb-4">管理設定</h2>
+            <input type="password" id="pin" placeholder="PIN(4桁)" class="w-full bg-slate-800 p-2 mb-2 rounded">
+            <input type="text" id="token" placeholder="GitHub Token" class="w-full bg-slate-800 p-2 mb-2 rounded">
+            <button onclick="saveAdmin()" class="w-full bg-indigo-600 py-2 rounded">保存</button>
+        </div>
     </div>
-</div>
 
 <script>
-    let recipes = [];
-    const CONFIG_KEY = 'pz_chess_config';
+    let recipes = [], layout = [];
+    const cfg = JSON.parse(localStorage.getItem('pz_cfg') || '{}');
 
-    // 初期化
-    async function init() {
-        lucide.createIcons();
-        const stored = localStorage.getItem(CONFIG_KEY);
-        if(stored) {
-            const config = JSON.parse(stored);
-            await fetchRecipes(config);
-        }
-    }
-
-    async function fetchRecipes(config) {
+    // GitHubからデータを読み込む
+    async function loadData() {
         try {
-            const res = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/recipes.json`, {
-                headers: { 'Accept': 'application/vnd.github.v3.raw', 'Authorization': `token ${config.token}` }
+            const res = await fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/recipes.json`, {
+                headers: { 'Accept': 'application/vnd.github.v3.raw', 'Authorization': `token ${cfg.token}` }
             });
             recipes = await res.json();
-            const select = document.getElementById('recipe-select');
-            recipes.forEach(r => {
-                const opt = document.createElement('option');
-                opt.value = r.id;
-                opt.textContent = r.name;
-                select.appendChild(opt);
-            });
-        } catch(e) { console.error(e); }
+            renderRecipes();
+        } catch(e) { console.error("データ取得失敗:", e); }
     }
 
-    function renderRecipe() {
-        const id = document.getElementById('recipe-select').value;
-        const recipe = recipes.find(r => r.id === id);
-        if(!recipe) return;
+    function renderRecipes() {
+        const list = document.getElementById('recipe-list');
+        list.innerHTML = recipes.map(r => `
+            <div class="flex justify-between bg-slate-800 p-2 rounded text-xs">
+                <span>${r.name}</span>
+                <button onclick="addToLayout('${r.id}')" class="bg-indigo-600 px-2 rounded">追加</button>
+            </div>
+        `).join('');
+    }
 
-        const grid = document.getElementById('grid-display');
-        grid.innerHTML = '';
-        recipe.grid.flat().forEach(val => {
-            const div = document.createElement('div');
-            div.className = `chess-circle color-${val}`;
-            grid.appendChild(div);
+    function addToLayout(id) {
+        if(layout.find(r => r.id === id)) return alert("重複不可");
+        layout.push(recipes.find(r => r.id === id));
+        updateStats();
+    }
+
+    function updateStats() {
+        let cost = {red:0, blue:0, green:0, yellow:0, purple:0};
+        let buffs = {};
+        layout.forEach(r => {
+            for(let c in r.cost) cost[c] += r.cost[c];
+            let k = r.effect.target + r.effect.type;
+            buffs[k] = (buffs[k] || 0) + r.effect.value;
         });
-
-        document.getElementById('stats-display').innerHTML = `
-            <p class="text-white font-bold">${recipe.name}</p>
-            <p>効果: ${recipe.effect.target} ${recipe.effect.type} +${recipe.effect.value}%</p>
-            <p class="mt-2">必要チェス: 赤${recipe.cost.red} 青${recipe.cost.blue} 緑${recipe.cost.green} 黄${recipe.cost.yellow} 紫${recipe.cost.purple}</p>
+        document.getElementById('stats').innerHTML = `
+            <p class="text-green-400 font-bold">必要: ${JSON.stringify(cost)}</p>
+            <p>バフ: ${JSON.stringify(buffs)}</p>
         `;
     }
 
-    function toggleAdminStatusAction() { document.getElementById('login-modal').classList.remove('hidden'); }
-    
-    function submitLogin() {
-        const pin = document.getElementById('login-pin').value;
-        const config = JSON.parse(localStorage.getItem(CONFIG_KEY));
-        if(pin === config.pin) {
-            document.getElementById('login-modal').classList.add('hidden');
-            document.getElementById('global-save-btn').classList.remove('hidden');
-            alert('ログイン成功');
-        }
+    function saveAdmin() {
+        localStorage.setItem('pz_cfg', JSON.stringify({
+            owner: 'YOUR_OWNER', repo: 'YOUR_REPO', pin: document.getElementById('pin').value, token: document.getElementById('token').value
+        }));
+        document.getElementById('admin-modal').classList.add('hidden');
     }
 
-    function saveSettings() {
-        const config = {
-            owner: document.getElementById('cfg-owner').value,
-            repo: document.getElementById('cfg-repo').value,
-            token: document.getElementById('cfg-token').value,
-            pin: '1234' // デフォルトPIN
-        };
-        localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
-        alert('設定保存完了');
-    }
-
-    async function pushToDatabaseGitHub() {
-        alert('GitHubへ更新をプッシュします（実装済みロジックが実行されます）');
-        // ここにPUTリクエスト処理を記述
-    }
-
-    init();
+    loadData();
 </script>
 </body>
 </html>
