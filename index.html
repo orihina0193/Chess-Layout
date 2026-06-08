@@ -5,133 +5,103 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Puzzles & Survival Chess Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        .chess-circle { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; }
-        .grid-5x7 { display: grid; grid-template-columns: repeat(7, 40px); gap: 4px; }
-        .bg-0 { background: #374151; } .bg-1 { background: #ef4444; } .bg-2 { background: #3b82f6; } 
+        .chess-circle { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+        .grid-5x7 { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        .bg-0 { background: #1f2937; } .bg-1 { background: #ef4444; } .bg-2 { background: #3b82f6; } 
         .bg-3 { background: #22c55e; } .bg-4 { background: #eab308; } .bg-5 { background: #a855f7; }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-200 min-h-screen p-6">
+<body class="bg-slate-950 text-slate-200 min-h-screen p-4">
 
-<div class="max-w-6xl mx-auto">
-    <header class="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
+<div class="max-w-5xl mx-auto">
+    <header class="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
         <h1 class="text-xl font-black">CHESS LAYOUT MANAGER</h1>
-        <div class="flex items-center gap-2">
-            <button id="global-save-btn" onclick="pushToDatabaseGitHub()" class="hidden px-3 py-1.5 bg-emerald-600 rounded-xl text-[11px] font-bold shadow-lg hover:bg-emerald-700">GitHubへ保存</button>
-            <button onclick="document.getElementById('admin-modal').classList.remove('hidden')" class="px-3 py-1.5 rounded-xl border border-slate-700 text-[10px] font-bold">管理設定</button>
+        <div class="flex gap-2">
+            <button id="global-save-btn" onclick="pushToDatabaseGitHub()" class="hidden bg-emerald-600 px-3 py-1.5 rounded-xl text-[11px] font-bold">保存</button>
+            <button onclick="document.getElementById('login-modal').classList.remove('hidden')" class="bg-slate-800 px-3 py-1.5 rounded-xl text-[11px] font-bold">管理設定</button>
         </div>
     </header>
 
-    <div class="grid md:grid-cols-2 gap-8">
-        <section class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
-            <h2 class="font-bold mb-4 text-indigo-400">フルレイアウト (5x7)</h2>
-            <div id="full-board" class="grid-5x7 bg-slate-950 p-4 rounded-xl"></div>
-            <div id="total-stats" class="mt-6 p-4 bg-slate-950 rounded-lg text-xs space-y-1"></div>
+    <div class="grid md:grid-cols-2 gap-6">
+        <section class="bg-slate-900 p-4 rounded-2xl border border-slate-800">
+            <h2 class="text-sm font-bold mb-4">フルレイアウト (5x7)</h2>
+            <div id="full-board" class="grid-5x7 bg-slate-950 p-2 rounded-xl mb-4"></div>
+            <div id="stats-panel" class="text-xs bg-slate-950 p-3 rounded-lg">閲覧モード：未設定</div>
+            <button onclick="registerLayout()" class="mt-4 w-full py-2 bg-indigo-600 rounded-lg text-xs font-bold">現在のレイアウトを登録</button>
         </section>
 
-        <section class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
-            <h2 class="font-bold mb-4 text-emerald-400">レシピ・パーツ管理</h2>
-            <div id="recipe-list" class="space-y-2 h-[400px] overflow-y-auto pr-2"></div>
+        <section class="bg-slate-900 p-4 rounded-2xl border border-slate-800">
+            <h2 class="text-sm font-bold mb-4">レシピ一覧</h2>
+            <div id="recipe-list" class="space-y-2 h-[400px] overflow-y-auto"></div>
         </section>
     </div>
 </div>
 
-<div id="admin-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4">
-    <div class="bg-slate-900 p-8 rounded-2xl w-full max-w-sm border border-slate-700">
-        <h2 class="font-bold mb-4">GitHub 設定</h2>
-        <input type="text" id="cfg-owner" placeholder="Owner" class="w-full bg-slate-800 p-2 mb-2 rounded text-xs">
-        <input type="text" id="cfg-repo" placeholder="Repo" class="w-full bg-slate-800 p-2 mb-2 rounded text-xs">
-        <input type="password" id="cfg-token" placeholder="GitHub Token" class="w-full bg-slate-800 p-2 mb-4 rounded text-xs">
-        <button onclick="saveSettings()" class="w-full bg-indigo-600 py-2 rounded-lg text-xs font-bold">適用して再読み込み</button>
-        <button onclick="document.getElementById('admin-modal').classList.add('hidden')" class="w-full mt-2 text-slate-500 text-xs">閉じる</button>
+<div id="login-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4">
+    <div class="bg-slate-900 p-6 rounded-2xl w-80 text-center">
+        <h3 class="font-bold mb-4">PIN認証</h3>
+        <input type="password" id="login-pin" maxlength="4" class="w-full bg-slate-800 p-2 rounded mb-4 text-center text-xl font-black">
+        <button onclick="submitLogin()" class="w-full bg-indigo-600 py-2 rounded-lg font-bold">ログイン</button>
     </div>
 </div>
 
 <script>
-    let recipes = [], layout = [], currentSha = '';
+    let recipes = [], currentLayout = [], sha = '';
     const CONFIG_KEY = 'pz_chess_config';
 
-    // 起動処理
-    async function init() {
-        const stored = localStorage.getItem(CONFIG_KEY);
-        if(stored) {
-            const config = JSON.parse(stored);
-            await fetchGitHubData(config);
-        }
-    }
-
-    // GitHub読み込み (GET)
-    async function fetchGitHubData(config) {
-        try {
-            const url = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/recipes.json`;
-            const res = await fetch(url, { headers: { 'Authorization': `token ${config.token}` } });
-            const data = await res.json();
-            currentSha = data.sha;
-            recipes = JSON.parse(decodeURIComponent(escape(atob(data.content))));
-            document.getElementById('global-save-btn').classList.remove('hidden');
-            renderRecipeList();
-        } catch(e) { console.error("データ読み込み失敗:", e); }
-    }
-
-    // GitHub保存 (PUT)
-    async function pushToDatabaseGitHub() {
+    // GitHubからデータを取得
+    async function loadData() {
         const config = JSON.parse(localStorage.getItem(CONFIG_KEY));
+        if(!config) return;
         const url = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/recipes.json`;
-        const body = {
-            message: "CHESS APP DATA UPDATE",
-            content: btoa(unescape(encodeURIComponent(JSON.stringify(recipes)))),
-            sha: currentSha
-        };
-        const res = await fetch(url, {
-            method: 'PUT',
-            headers: { 'Authorization': `token ${config.token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-        if(res.ok) {
-            const json = await res.json();
-            currentSha = json.content.sha;
-            alert("GitHubへ保存しました！");
-        }
+        const res = await fetch(url, { headers: { 'Authorization': `token ${config.token}` } });
+        const data = await res.json();
+        sha = data.sha;
+        recipes = JSON.parse(decodeURIComponent(escape(atob(data.content))));
+        renderList();
     }
 
-    // UI描画系 (簡略化せずリストとボードをレンダリング)
-    function renderRecipeList() {
-        const list = document.getElementById('recipe-list');
-        list.innerHTML = recipes.map(r => `
+    function renderList() {
+        document.getElementById('recipe-list').innerHTML = recipes.map(r => `
             <div class="bg-slate-800 p-3 rounded flex justify-between items-center text-xs">
                 <span>${r.name}</span>
-                <button onclick="addLayout('${r.id}')" class="bg-indigo-600 px-3 py-1 rounded">配置</button>
+                <button onclick="addToLayout('${r.id}')" class="bg-indigo-600 px-2 py-1 rounded">追加</button>
             </div>
         `).join('');
     }
 
-    function addLayout(id) {
-        const recipe = recipes.find(r => r.id === id);
-        layout.push(recipe);
-        updateBoard();
+    function addToLayout(id) {
+        currentLayout.push(recipes.find(r => r.id === id));
+        document.getElementById('stats-panel').innerHTML = `閲覧モード：${currentLayout.length}件のレシピを配置中`;
     }
 
-    function updateBoard() {
-        // 必要チェス数計算ロジック
-        let cost = {red:0, blue:0, green:0, yellow:0, purple:0};
-        layout.forEach(r => { for(let c in r.cost) cost[c] += r.cost[c]; });
-        document.getElementById('total-stats').innerHTML = `
-            <p class="text-green-400 font-bold">必要コスト合計: ${JSON.stringify(cost)}</p>
-        `;
+    function registerLayout() {
+        alert("現在のレイアウトを保存しました（機能実装中）");
     }
 
-    function saveSettings() {
-        localStorage.setItem(CONFIG_KEY, JSON.stringify({
-            owner: document.getElementById('cfg-owner').value,
-            repo: document.getElementById('cfg-repo').value,
-            token: document.getElementById('cfg-token').value
-        }));
-        location.reload();
+    function submitLogin() {
+        if(document.getElementById('login-pin').value === '1234') {
+            document.getElementById('login-modal').classList.add('hidden');
+            document.getElementById('global-save-btn').classList.remove('hidden');
+        } else { alert("PIN不正"); }
     }
 
-    init();
+    async function pushToDatabaseGitHub() {
+        const config = JSON.parse(localStorage.getItem(CONFIG_KEY));
+        const res = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/recipes.json`, {
+            method: 'PUT',
+            headers: { 'Authorization': `token ${config.token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message: "更新",
+                content: btoa(unescape(encodeURIComponent(JSON.stringify(recipes)))),
+                sha: sha
+            })
+        });
+        if(res.ok) alert("GitHubへ保存成功");
+    }
+
+    loadData();
 </script>
 </body>
 </html>
