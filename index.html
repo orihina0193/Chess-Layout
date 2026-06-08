@@ -2,99 +2,99 @@
 <html lang="ja" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CHESS LAYOUT MANAGER</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .board { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        .grid-5x7 { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
         .cell { aspect-ratio: 1; border-radius: 50%; border: 1px solid #475569; }
-        .cell.editable { cursor: pointer; }
-        .palette-btn { width: 40px; height: 40px; border-radius: 50%; border: 2px solid transparent; }
-        .selected { border-color: white; transform: scale(1.1); }
-        .bg-0 { background: #1f2937; } .bg-1 { background: #ef4444; } .bg-2 { background: #3b82f6; } 
-        .bg-3 { background: #22c55e; } .bg-4 { background: #eab308; } .bg-5 { background: #a855f7; }
+        .bg-0 { background: #1f2937; } /* 空 */
+        .bg-1 { background: #ef4444; } /* 赤 */
+        .bg-2 { background: #3b82f6; } /* 青 */
+        .bg-3 { background: #22c55e; } /* 緑 */
+        .bg-4 { background: #eab308; } /* 黄 */
+        .bg-5 { background: #a855f7; } /* 紫 */
     </style>
 </head>
 <body class="bg-slate-950 text-slate-200 p-4">
+    <div class="max-w-xl mx-auto">
+        <header class="flex justify-between items-center mb-6">
+            <h1 class="text-xl font-bold">CHESS MANAGER</h1>
+            <div id="mode-indicator" class="px-3 py-1 bg-slate-800 rounded text-xs">閲覧モード</div>
+        </header>
 
-<div class="max-w-md mx-auto">
-    <header class="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
-        <h1 class="text-lg font-black" id="mode-title">閲覧モード</h1>
-        <button id="admin-trigger" onclick="openAuth()" class="bg-slate-800 px-3 py-1 rounded text-xs font-bold">管理設定</button>
-    </header>
+        <section id="admin-section" class="hidden mb-6 p-4 bg-slate-900 rounded-xl">
+            <h2 class="text-sm font-bold mb-2">管理設定</h2>
+            <input type="text" id="cfg-owner" placeholder="Owner" class="w-full bg-slate-800 p-2 mb-2 rounded text-sm">
+            <input type="text" id="cfg-repo" placeholder="Repo" class="w-full bg-slate-800 p-2 mb-2 rounded text-sm">
+            <input type="password" id="cfg-token" placeholder="GitHub PAT" class="w-full bg-slate-800 p-2 mb-2 rounded text-sm">
+            <button onclick="saveConfig()" class="w-full bg-emerald-600 py-2 rounded text-sm font-bold">設定保存</button>
+        </section>
 
-    <section class="bg-slate-900 p-4 rounded-xl mb-6">
-        <div id="board" class="board mb-6"></div>
-        <div id="palette" class="hidden flex justify-center gap-3"></div>
-    </section>
+        <div id="board" class="grid-5x7 mb-6"></div>
 
-    <section id="admin-panel" class="hidden bg-slate-900 p-4 rounded-xl mb-6 space-y-3">
-        <h2 class="text-xs font-bold text-emerald-400">GitHub 接続設定</h2>
-        <input type="text" id="cfg-owner" placeholder="Owner" class="w-full bg-slate-800 p-2 rounded text-sm">
-        <input type="text" id="cfg-repo" placeholder="Repo" class="w-full bg-slate-800 p-2 rounded text-sm">
-        <input type="password" id="cfg-token" placeholder="GitHub PAT" class="w-full bg-slate-800 p-2 rounded text-sm">
-        <button onclick="applyConfig()" class="w-full bg-emerald-600 py-2 rounded text-sm font-bold">保存・適用</button>
-    </section>
+        <div id="stats" class="p-4 bg-slate-900 rounded-xl text-sm">
+            <h2 class="font-bold text-indigo-400 mb-2">発動中のバフ・必要数</h2>
+            <div id="buff-list">レシピを選択してください</div>
+        </div>
 
-    <section class="bg-slate-900 p-4 rounded-xl">
-        <h2 class="text-xs font-bold text-indigo-400 mb-2">現在のバフ合計</h2>
-        <div id="buff-display" class="text-xs space-y-1">配置してください</div>
-    </section>
-</div>
-
-<div id="auth-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
-    <div class="bg-slate-900 p-6 rounded-xl w-full max-w-sm">
-        <h2 class="font-bold mb-4 text-sm">PIN認証</h2>
-        <input type="password" id="pin-input" maxlength="4" class="w-full bg-slate-800 p-2 mb-4 rounded text-center text-xl tracking-widest">
-        <button onclick="verifyPin()" class="w-full bg-indigo-600 py-2 rounded font-bold text-sm">認証</button>
+        <button onclick="document.getElementById('auth-modal').classList.remove('hidden')" class="mt-4 text-xs text-slate-500 underline">管理モードへ</button>
     </div>
-</div>
 
-<script>
-    let gridState = Array(35).fill(0), selectedColor = 1, isAuth = false, config = {};
+    <div id="auth-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4">
+        <div class="bg-slate-900 p-6 rounded-xl w-full max-w-sm">
+            <input type="password" id="pin-input" placeholder="PIN (4桁)" class="w-full bg-slate-800 p-2 mb-4 rounded text-center text-xl">
+            <button onclick="checkPin()" class="w-full bg-indigo-600 py-2 rounded font-bold">認証</button>
+        </div>
+    </div>
 
-    function openAuth() { document.getElementById('auth-modal').classList.remove('hidden'); }
+    <script>
+        let recipes = []; // GitHubから読み込むレシピ
+        
+        // 初期化: GitHubから recipes.json を取得
+        async function init() {
+            const config = JSON.parse(localStorage.getItem('gh_config') || '{}');
+            if(config.token) {
+                try {
+                    const res = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/recipes.json`, {
+                        headers: {'Authorization': `token ${config.token}`}
+                    });
+                    const data = await res.json();
+                    recipes = JSON.parse(atob(data.content)).recipes;
+                    console.log("レシピ読み込み完了", recipes);
+                } catch(e) { console.error("読み込み失敗"); }
+            }
+        }
 
-    function verifyPin() {
-        if(document.getElementById('pin-input').value === '1234') {
-            isAuth = true;
-            document.getElementById('mode-title').innerText = "管理モード";
-            document.getElementById('admin-panel').classList.remove('hidden');
-            document.getElementById('palette').classList.remove('hidden');
-            document.getElementById('auth-modal').classList.add('hidden');
-            renderBoard();
-        } else { alert("PIN不正"); }
-    }
+        function checkPin() {
+            if(document.getElementById('pin-input').value === '1234') {
+                document.getElementById('admin-section').classList.remove('hidden');
+                document.getElementById('mode-indicator').innerText = "管理モード";
+                document.getElementById('auth-modal').classList.add('hidden');
+            } else { alert("PIN不正"); }
+        }
 
-    function applyConfig() {
-        config = {
-            owner: document.getElementById('cfg-owner').value,
-            repo: document.getElementById('cfg-repo').value,
-            token: document.getElementById('cfg-token').value
-        };
-        alert("GitHub設定を保存しました");
-    }
+        function saveConfig() {
+            localStorage.setItem('gh_config', JSON.stringify({
+                owner: document.getElementById('cfg-owner').value,
+                repo: document.getElementById('cfg-repo').value,
+                token: document.getElementById('cfg-token').value
+            }));
+            alert("保存しました");
+        }
 
-    function renderBoard() {
-        const board = document.getElementById('board');
-        board.innerHTML = '';
-        gridState.forEach((val, i) => {
-            const d = document.createElement('div');
-            d.className = `cell bg-${val} ${isAuth ? 'editable' : ''}`;
-            if(isAuth) d.onclick = () => { gridState[i] = selectedColor; renderBoard(); updateBuffs(); };
-            board.appendChild(d);
-        });
-        updateBuffs();
-    }
+        // ボード初期描画（5x7）
+        function drawBoard() {
+            const b = document.getElementById('board');
+            b.innerHTML = '';
+            for(let i=0; i<35; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell bg-0';
+                b.appendChild(cell);
+            }
+        }
 
-    function updateBuffs() {
-        const counts = gridState.reduce((acc, v) => (v > 0 && (acc[v] = (acc[v]||0)+1), acc), {});
-        document.getElementById('buff-display').innerHTML = Object.keys(counts).length 
-            ? Object.entries(counts).map(([c, n]) => `<p>色 ${c}: ${n}個</p>`).join('')
-            : '配置してください';
-    }
-
-    renderBoard();
-</script>
+        init();
+        drawBoard();
+    </script>
 </body>
 </html>
