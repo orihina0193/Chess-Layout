@@ -8,7 +8,7 @@
     <style>
         .board { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
         .cell { aspect-ratio: 1; border-radius: 50%; cursor: pointer; border: 1px solid #475569; }
-        .palette-btn { width: 36px; height: 36px; border-radius: 50%; border: 2px solid transparent; }
+        .palette-btn { width: 40px; height: 40px; border-radius: 50%; border: 2px solid transparent; }
         .selected { border-color: white; transform: scale(1.1); }
         .bg-0 { background: #1f2937; } .bg-1 { background: #ef4444; } .bg-2 { background: #3b82f6; } 
         .bg-3 { background: #22c55e; } .bg-4 { background: #eab308; } .bg-5 { background: #a855f7; }
@@ -18,10 +18,10 @@
 
 <div class="max-w-md mx-auto">
     <header class="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
-        <h1 class="text-lg font-black">MANAGER</h1>
+        <h1 class="text-lg font-black">CHESS LAYOUT MANAGER</h1>
         <div class="flex gap-2">
             <button id="save-btn" onclick="saveToGitHub()" class="hidden bg-emerald-600 px-3 py-1 rounded text-xs font-bold">保存</button>
-            <button id="admin-btn" onclick="openAuth()" class="bg-slate-800 px-3 py-1 rounded text-xs font-bold">管理設定</button>
+            <button onclick="document.getElementById('admin-modal').classList.remove('hidden')" class="bg-slate-800 px-3 py-1 rounded text-xs font-bold">管理設定</button>
         </div>
     </header>
 
@@ -32,18 +32,18 @@
 
     <section class="bg-slate-900 p-4 rounded-xl">
         <h2 class="text-xs font-bold text-indigo-400 mb-2">現在のバフ合計</h2>
-        <div id="buff-display" class="text-xs space-y-1">読み込み中...</div>
+        <div id="buff-display" class="text-xs space-y-1">配置してください</div>
     </section>
 </div>
 
 <div id="admin-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
     <div class="bg-slate-900 p-6 rounded-xl w-full max-w-sm">
-        <h2 class="font-bold mb-4 text-sm">GitHub 管理設定</h2>
+        <h2 class="font-bold mb-4 text-sm">管理設定</h2>
         <input type="password" id="admin-pin" placeholder="PIN (4桁)" class="w-full bg-slate-800 p-2 mb-2 rounded text-sm">
         <input type="text" id="cfg-owner" placeholder="Owner" class="w-full bg-slate-800 p-2 mb-2 rounded text-sm">
         <input type="text" id="cfg-repo" placeholder="Repo" class="w-full bg-slate-800 p-2 mb-2 rounded text-sm">
         <input type="password" id="cfg-token" placeholder="GitHub PAT" class="w-full bg-slate-800 p-2 mb-4 rounded text-sm">
-        <button onclick="applyAdmin()" class="w-full bg-indigo-600 py-2 rounded font-bold text-sm">認証して適用</button>
+        <button onclick="applyAdmin()" class="w-full bg-indigo-600 py-2 rounded font-bold text-sm">適用</button>
         <button onclick="document.getElementById('admin-modal').classList.add('hidden')" class="w-full mt-2 text-slate-500 text-xs">閉じる</button>
     </div>
 </div>
@@ -64,18 +64,17 @@
 
     async function loadFromGitHub() {
         try {
-            const url = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/recipes.json`;
+            const url = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/data.json`;
             const res = await fetch(url, { headers: { 'Authorization': `token ${config.token}` } });
             const data = await res.json();
             currentSha = data.sha;
             gridState = JSON.parse(atob(data.content));
             renderBoard();
-            document.getElementById('buff-display').innerHTML = "読み込み完了";
-        } catch(e) { document.getElementById('buff-display').innerHTML = "データ取得失敗"; }
+        } catch(e) { document.getElementById('buff-display').innerText = "読み込みエラー"; }
     }
 
     async function saveToGitHub() {
-        const res = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/recipes.json`, {
+        const res = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/data.json`, {
             method: 'PUT',
             headers: { 'Authorization': `token ${config.token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -84,7 +83,7 @@
                 sha: currentSha
             })
         });
-        if(res.ok) alert("GitHubへ保存しました");
+        if(res.ok) alert("GitHubへ保存成功");
     }
 
     function applyAdmin() {
@@ -106,9 +105,10 @@
         gridState.forEach((val, i) => {
             const d = document.createElement('div');
             d.className = `cell bg-${val}`;
-            d.onclick = () => { gridState[i] = selectedColor; renderBoard(); };
+            d.onclick = () => { gridState[i] = selectedColor; renderBoard(); updateBuffs(); };
             board.appendChild(d);
         });
+        updateBuffs();
     }
 
     function renderPalette() {
@@ -121,7 +121,13 @@
         });
     }
 
-    function openAuth() { document.getElementById('admin-modal').classList.remove('hidden'); }
+    function updateBuffs() {
+        const counts = gridState.reduce((acc, v) => (v > 0 && (acc[v] = (acc[v]||0)+1), acc), {});
+        document.getElementById('buff-display').innerHTML = Object.keys(counts).length 
+            ? Object.entries(counts).map(([c, n]) => `<p>色 ${c}: ${n}個</p>`).join('')
+            : '配置してください';
+    }
+
     init();
 </script>
 </body>
