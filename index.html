@@ -20,15 +20,20 @@
 <div class="max-w-md mx-auto">
     <header class="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
         <h1 class="text-lg font-black" id="mode-title">閲覧モード</h1>
-        <div class="flex gap-2">
-            <button id="save-btn" onclick="saveToGitHub()" class="hidden bg-emerald-600 px-3 py-1 rounded text-xs font-bold">保存</button>
-            <button id="admin-trigger" onclick="openAuth()" class="bg-slate-800 px-3 py-1 rounded text-xs font-bold">管理設定</button>
-        </div>
+        <button id="admin-trigger" onclick="openAuth()" class="bg-slate-800 px-3 py-1 rounded text-xs font-bold">管理設定</button>
     </header>
 
     <section class="bg-slate-900 p-4 rounded-xl mb-6">
         <div id="board" class="board mb-6"></div>
         <div id="palette" class="hidden flex justify-center gap-3"></div>
+    </section>
+
+    <section id="admin-panel" class="hidden bg-slate-900 p-4 rounded-xl mb-6 space-y-3">
+        <h2 class="text-xs font-bold text-emerald-400">GitHub 接続設定</h2>
+        <input type="text" id="cfg-owner" placeholder="Owner" class="w-full bg-slate-800 p-2 rounded text-sm">
+        <input type="text" id="cfg-repo" placeholder="Repo" class="w-full bg-slate-800 p-2 rounded text-sm">
+        <input type="password" id="cfg-token" placeholder="GitHub PAT" class="w-full bg-slate-800 p-2 rounded text-sm">
+        <button onclick="applyConfig()" class="w-full bg-emerald-600 py-2 rounded text-sm font-bold">保存・適用</button>
     </section>
 
     <section class="bg-slate-900 p-4 rounded-xl">
@@ -39,57 +44,35 @@
 
 <div id="auth-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
     <div class="bg-slate-900 p-6 rounded-xl w-full max-w-sm">
-        <h2 class="font-bold mb-4 text-sm">管理設定</h2>
-        <input type="password" id="admin-pin" placeholder="PIN (4桁)" class="w-full bg-slate-800 p-2 mb-2 rounded text-sm">
-        <input type="text" id="cfg-owner" placeholder="Owner" class="w-full bg-slate-800 p-2 mb-2 rounded text-sm">
-        <input type="text" id="cfg-repo" placeholder="Repo" class="w-full bg-slate-800 p-2 mb-2 rounded text-sm">
-        <input type="password" id="cfg-token" placeholder="GitHub PAT" class="w-full bg-slate-800 p-2 mb-4 rounded text-sm">
-        <button onclick="verifyAndApply()" class="w-full bg-indigo-600 py-2 rounded font-bold text-sm">適用</button>
+        <h2 class="font-bold mb-4 text-sm">PIN認証</h2>
+        <input type="password" id="pin-input" maxlength="4" class="w-full bg-slate-800 p-2 mb-4 rounded text-center text-xl tracking-widest">
+        <button onclick="verifyPin()" class="w-full bg-indigo-600 py-2 rounded font-bold text-sm">認証</button>
     </div>
 </div>
 
 <script>
-    let gridState = Array(35).fill(0), selectedColor = 1, isAuth = false, config = {}, currentSha = '';
+    let gridState = Array(35).fill(0), selectedColor = 1, isAuth = false, config = {};
 
-    // GitHub通信：保存用関数
-    async function saveToGitHub() {
-        if (!config.token) return alert("設定が未完了です");
-        try {
-            const res = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/data.json`, {
-                method: 'PUT',
-                headers: { 
-                    'Authorization': `token ${config.token}`,
-                    'Content-Type': 'application/json' 
-                },
-                body: JSON.stringify({
-                    message: "Layout Update",
-                    content: btoa(JSON.stringify(gridState)),
-                    sha: currentSha
-                })
-            });
-            const data = await res.json();
-            if (res.ok) {
-                currentSha = data.content.sha;
-                alert("GitHubへ保存成功");
-            } else {
-                alert("保存失敗: " + data.message);
-            }
-        } catch(e) { alert("通信エラー"); }
+    function openAuth() { document.getElementById('auth-modal').classList.remove('hidden'); }
+
+    function verifyPin() {
+        if(document.getElementById('pin-input').value === '1234') {
+            isAuth = true;
+            document.getElementById('mode-title').innerText = "管理モード";
+            document.getElementById('admin-panel').classList.remove('hidden');
+            document.getElementById('palette').classList.remove('hidden');
+            document.getElementById('auth-modal').classList.add('hidden');
+            renderBoard();
+        } else { alert("PIN不正"); }
     }
 
-    function verifyAndApply() {
-        if (document.getElementById('admin-pin').value !== '1234') return alert('PIN不正');
+    function applyConfig() {
         config = {
             owner: document.getElementById('cfg-owner').value,
             repo: document.getElementById('cfg-repo').value,
             token: document.getElementById('cfg-token').value
         };
-        isAuth = true;
-        document.getElementById('mode-title').innerText = "管理モード";
-        document.getElementById('palette').classList.remove('hidden');
-        document.getElementById('save-btn').classList.remove('hidden');
-        document.getElementById('auth-modal').classList.add('hidden');
-        renderBoard();
+        alert("GitHub設定を保存しました");
     }
 
     function renderBoard() {
@@ -111,7 +94,6 @@
             : '配置してください';
     }
 
-    function openAuth() { document.getElementById('auth-modal').classList.remove('hidden'); }
     renderBoard();
 </script>
 </body>
