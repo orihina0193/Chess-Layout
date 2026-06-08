@@ -2,14 +2,13 @@
 <html lang="ja" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Puzzles & Survival Chess Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        .chess-circle { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-        .color-1 { background-color: #ef4444; } .color-2 { background-color: #3b82f6; } 
-        .color-3 { background-color: #22c55e; } .color-4 { background-color: #eab308; } 
+        .chess-circle { width: 40px; height: 40px; border-radius: 50%; }
+        .color-1 { background-color: #ef4444; } .color-2 { background-color: #3b82f6; }
+        .color-3 { background-color: #22c55e; } .color-4 { background-color: #eab308; }
         .color-5 { background-color: #a855f7; } .color-0 { background-color: #1f2937; }
     </style>
 </head>
@@ -20,34 +19,31 @@
         <h1 class="text-xl font-black text-white">CHESS LAYOUT MANAGER</h1>
         <div class="flex items-center gap-2">
             <button id="global-save-btn" onclick="pushToDatabaseGitHub()" class="hidden px-3 py-1.5 bg-emerald-600 rounded-xl text-[11px] font-bold shadow-lg hover:bg-emerald-700">GitHubへ保存</button>
-            <button onclick="toggleAdminStatusAction()" class="px-3 py-1.5 rounded-xl border border-slate-700 text-[10px] font-bold">管理者ログイン</button>
+            <button id="admin-trigger" onclick="openLoginModal()" class="px-3 py-1.5 rounded-xl border border-slate-700 text-[10px] font-bold">管理者ログイン</button>
         </div>
     </header>
 
-    <div class="grid md:grid-cols-2 gap-8">
+    <div id="main-content" class="grid md:grid-cols-2 gap-8">
         <section class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
-            <select id="recipe-select" class="w-full bg-slate-800 p-2 rounded-lg mb-4 text-sm" onchange="renderRecipe()">
-                <option value="">レシピを選択してください</option>
-            </select>
-            <div id="grid-display" class="grid grid-cols-4 gap-2 justify-items-center mb-6"></div>
-            <div id="stats-display" class="text-xs text-slate-400 space-y-1"></div>
+            <select id="recipe-select" class="w-full bg-slate-800 p-2 rounded-lg mb-4 text-sm" onchange="renderRecipe()"></select>
+            <div id="grid-display" class="grid grid-cols-4 gap-2 mb-6"></div>
         </section>
 
-        <section id="config-panel" class="bg-slate-900 p-6 rounded-2xl border border-slate-800">
-            <h2 class="text-sm font-bold mb-4 text-indigo-400">GitHub 設定</h2>
+        <section id="config-panel" class="hidden bg-slate-900 p-6 rounded-2xl border border-slate-800">
+            <h2 class="text-sm font-bold mb-4 text-indigo-400">GitHub 詳細設定</h2>
             <input type="text" id="cfg-owner" placeholder="Owner" class="w-full bg-slate-800 p-2 mb-2 rounded text-xs">
             <input type="text" id="cfg-repo" placeholder="Repo" class="w-full bg-slate-800 p-2 mb-2 rounded text-xs">
             <input type="text" id="cfg-path" placeholder="recipes.json" class="w-full bg-slate-800 p-2 mb-2 rounded text-xs">
             <input type="password" id="cfg-token" placeholder="Personal Access Token" class="w-full bg-slate-800 p-2 mb-4 rounded text-xs">
-            <button onclick="saveSettings()" class="w-full bg-indigo-600 py-2 rounded-lg text-xs font-bold">設定を保存</button>
+            <button onclick="saveSettings()" class="w-full bg-indigo-600 py-2 rounded-lg text-xs font-bold">設定を保存して読み込み</button>
         </section>
     </div>
 </div>
 
 <div id="login-modal" class="hidden fixed inset-0 bg-slate-950/80 flex items-center justify-center">
     <div class="bg-white p-6 rounded-2xl text-slate-900 w-80">
-        <h3 class="text-sm font-bold mb-4">管理者ログイン</h3>
-        <input type="password" id="login-pin" maxlength="4" placeholder="PIN" class="w-full p-2 border rounded mb-4 text-center font-black text-xl">
+        <h3 class="text-sm font-bold mb-4">管理者ログイン (PIN)</h3>
+        <input type="password" id="login-pin" maxlength="4" class="w-full p-2 border rounded mb-4 text-center text-xl font-black">
         <button onclick="submitLogin()" class="w-full bg-indigo-600 text-white py-2 rounded-lg font-bold">認証</button>
     </div>
 </div>
@@ -56,37 +52,45 @@
     let recipes = [], currentSha = '';
     const CONFIG_KEY = 'pz_chess_config';
 
-    async function init() {
-        lucide.createIcons();
-        const stored = localStorage.getItem(CONFIG_KEY);
-        if(stored) {
-            const config = JSON.parse(stored);
-            await fetchRecipes(config);
-        }
+    function openLoginModal() { document.getElementById('login-modal').classList.remove('hidden'); }
+
+    function submitLogin() {
+        const pin = document.getElementById('login-pin').value;
+        // 設定済みのPINと比較 (初回は1234を仮定)
+        if(pin === '1234') {
+            document.getElementById('login-modal').classList.add('hidden');
+            document.getElementById('config-panel').classList.remove('hidden');
+            document.getElementById('admin-trigger').classList.add('hidden');
+            alert('管理者モード：詳細設定が可能です');
+        } else { alert('PIN不正'); }
+    }
+
+    async function saveSettings() {
+        const config = {
+            owner: document.getElementById('cfg-owner').value,
+            repo: document.getElementById('cfg-repo').value,
+            path: document.getElementById('cfg-path').value,
+            token: document.getElementById('cfg-token').value
+        };
+        localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+        await fetchRecipes(config);
+        document.getElementById('global-save-btn').classList.remove('hidden');
     }
 
     async function fetchRecipes(config) {
-        try {
-            const res = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/${config.path}`, {
-                headers: { 'Authorization': `token ${config.token}` }
-            });
-            const data = await res.json();
-            currentSha = data.sha;
-            recipes = JSON.parse(atob(data.content));
-            const select = document.getElementById('recipe-select');
-            recipes.forEach(r => {
-                const opt = document.createElement('option');
-                opt.value = r.id;
-                opt.textContent = r.name;
-                select.appendChild(opt);
-            });
-        } catch(e) { console.error("データ取得エラー", e); }
+        const res = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/${config.path}`, {
+            headers: { 'Authorization': `token ${config.token}` }
+        });
+        const data = await res.json();
+        currentSha = data.sha;
+        recipes = JSON.parse(atob(data.content));
+        // ここでセレクトボックス等のUIを更新
     }
 
     async function pushToDatabaseGitHub() {
         const config = JSON.parse(localStorage.getItem(CONFIG_KEY));
         const body = {
-            message: "レシピ更新",
+            message: "更新",
             content: btoa(unescape(encodeURIComponent(JSON.stringify(recipes)))),
             sha: currentSha
         };
@@ -95,50 +99,8 @@
             headers: { 'Authorization': `token ${config.token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        if(res.ok) {
-            const data = await res.json();
-            currentSha = data.content.sha;
-            alert('GitHubへ保存成功！');
-        }
+        if(res.ok) alert("GitHubへ保存成功！");
     }
-
-    function renderRecipe() {
-        const id = document.getElementById('recipe-select').value;
-        const recipe = recipes.find(r => r.id === id);
-        if(!recipe) return;
-        const grid = document.getElementById('grid-display');
-        grid.innerHTML = recipe.grid.flat().map(v => `<div class="chess-circle color-${v}"></div>`).join('');
-        document.getElementById('stats-display').innerHTML = `
-            <p class="text-white font-bold">${recipe.name}</p>
-            <p>バフ: ${recipe.effect.target} ${recipe.effect.type} +${recipe.effect.value}%</p>
-        `;
-    }
-
-    function toggleAdminStatusAction() { document.getElementById('login-modal').classList.remove('hidden'); }
-    
-    function submitLogin() {
-        const pin = document.getElementById('login-pin').value;
-        const config = JSON.parse(localStorage.getItem(CONFIG_KEY));
-        if(pin === config.pin) {
-            document.getElementById('login-modal').classList.add('hidden');
-            document.getElementById('global-save-btn').classList.remove('hidden');
-            alert('ログイン成功');
-        }
-    }
-
-    function saveSettings() {
-        const config = {
-            owner: document.getElementById('cfg-owner').value,
-            repo: document.getElementById('cfg-repo').value,
-            path: document.getElementById('cfg-path').value,
-            token: document.getElementById('cfg-token').value,
-            pin: '1234'
-        };
-        localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
-        location.reload();
-    }
-
-    init();
 </script>
 </body>
 </html>
