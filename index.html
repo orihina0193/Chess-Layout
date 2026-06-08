@@ -3,105 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Puzzles & Survival Chess Manager</title>
+    <title>CHESS LAYOUT MANAGER</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .chess-circle { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; }
-        .grid-5x7 { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        .cell { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; border: 1px solid #475569; }
+        .palette-btn { width: 40px; height: 40px; border-radius: 50%; border: 2px solid transparent; }
+        .selected { border-color: white; transform: scale(1.1); }
         .bg-0 { background: #1f2937; } .bg-1 { background: #ef4444; } .bg-2 { background: #3b82f6; } 
         .bg-3 { background: #22c55e; } .bg-4 { background: #eab308; } .bg-5 { background: #a855f7; }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-200 min-h-screen p-4">
+<body class="bg-slate-950 text-slate-200 p-4">
 
-<div class="max-w-5xl mx-auto">
+<div class="max-w-xl mx-auto">
     <header class="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
-        <h1 class="text-xl font-black">CHESS LAYOUT MANAGER</h1>
+        <h1 class="text-lg font-black">MANAGER</h1>
         <div class="flex gap-2">
-            <button id="global-save-btn" onclick="pushToDatabaseGitHub()" class="hidden bg-emerald-600 px-3 py-1.5 rounded-xl text-[11px] font-bold">保存</button>
-            <button onclick="document.getElementById('login-modal').classList.remove('hidden')" class="bg-slate-800 px-3 py-1.5 rounded-xl text-[11px] font-bold">管理設定</button>
+            <button id="save-btn" onclick="pushToGitHub()" class="hidden bg-emerald-600 px-3 py-1 rounded text-xs font-bold">保存</button>
+            <button onclick="document.getElementById('admin-modal').classList.remove('hidden')" class="bg-slate-800 px-3 py-1 rounded text-xs font-bold">管理設定</button>
         </div>
     </header>
 
-    <div class="grid md:grid-cols-2 gap-6">
-        <section class="bg-slate-900 p-4 rounded-2xl border border-slate-800">
-            <h2 class="text-sm font-bold mb-4">フルレイアウト (5x7)</h2>
-            <div id="full-board" class="grid-5x7 bg-slate-950 p-2 rounded-xl mb-4"></div>
-            <div id="stats-panel" class="text-xs bg-slate-950 p-3 rounded-lg">閲覧モード：未設定</div>
-            <button onclick="registerLayout()" class="mt-4 w-full py-2 bg-indigo-600 rounded-lg text-xs font-bold">現在のレイアウトを登録</button>
-        </section>
+    <section class="bg-slate-900 p-4 rounded-xl mb-6">
+        <div id="grid" class="grid grid-cols-7 gap-2 w-fit mx-auto mb-6"></div>
+        <div id="palette" class="flex justify-center gap-3"></div>
+    </section>
 
-        <section class="bg-slate-900 p-4 rounded-2xl border border-slate-800">
-            <h2 class="text-sm font-bold mb-4">レシピ一覧</h2>
-            <div id="recipe-list" class="space-y-2 h-[400px] overflow-y-auto"></div>
-        </section>
-    </div>
+    <section class="bg-slate-900 p-4 rounded-xl">
+        <h2 class="text-xs font-bold text-indigo-400 mb-2">現在のバフ合計</h2>
+        <div id="buff-display" class="text-xs space-y-1">読み込み中...</div>
+    </section>
 </div>
 
-<div id="login-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4">
-    <div class="bg-slate-900 p-6 rounded-2xl w-80 text-center">
-        <h3 class="font-bold mb-4">PIN認証</h3>
-        <input type="password" id="login-pin" maxlength="4" class="w-full bg-slate-800 p-2 rounded mb-4 text-center text-xl font-black">
-        <button onclick="submitLogin()" class="w-full bg-indigo-600 py-2 rounded-lg font-bold">ログイン</button>
+<div id="admin-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4">
+    <div class="bg-slate-900 p-6 rounded-xl w-full max-w-sm">
+        <h2 class="font-bold mb-4">GitHub 管理設定</h2>
+        <input type="password" id="admin-pin" placeholder="PIN (4桁)" class="w-full bg-slate-800 p-2 mb-2 rounded text-sm">
+        <input type="text" id="cfg-owner" placeholder="Owner" class="w-full bg-slate-800 p-2 mb-2 rounded text-sm">
+        <input type="text" id="cfg-repo" placeholder="Repo" class="w-full bg-slate-800 p-2 mb-2 rounded text-sm">
+        <input type="password" id="cfg-token" placeholder="PAT" class="w-full bg-slate-800 p-2 mb-4 rounded text-sm">
+        <button onclick="submitAdmin()" class="w-full bg-indigo-600 py-2 rounded font-bold">認証して適用</button>
+        <button onclick="document.getElementById('admin-modal').classList.add('hidden')" class="w-full mt-2 text-slate-500 text-sm">閉じる</button>
     </div>
 </div>
 
 <script>
-    let recipes = [], currentLayout = [], sha = '';
-    const CONFIG_KEY = 'pz_chess_config';
+    let gridState = Array(35).fill(0), selectedColor = 1, currentSha = '', config = {};
+    const CONFIG_KEY = 'pz_cfg';
 
-    // GitHubからデータを取得
-    async function loadData() {
-        const config = JSON.parse(localStorage.getItem(CONFIG_KEY));
-        if(!config) return;
-        const url = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/recipes.json`;
-        const res = await fetch(url, { headers: { 'Authorization': `token ${config.token}` } });
-        const data = await res.json();
-        sha = data.sha;
-        recipes = JSON.parse(decodeURIComponent(escape(atob(data.content))));
-        renderList();
+    async function init() {
+        const stored = localStorage.getItem(CONFIG_KEY);
+        if(stored) {
+            config = JSON.parse(stored);
+            await loadFromGitHub();
+        }
+        initPalette();
     }
 
-    function renderList() {
-        document.getElementById('recipe-list').innerHTML = recipes.map(r => `
-            <div class="bg-slate-800 p-3 rounded flex justify-between items-center text-xs">
-                <span>${r.name}</span>
-                <button onclick="addToLayout('${r.id}')" class="bg-indigo-600 px-2 py-1 rounded">追加</button>
-            </div>
-        `).join('');
+    async function loadFromGitHub() {
+        try {
+            const url = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/data.json`;
+            const res = await fetch(url, { headers: { 'Authorization': `token ${config.token}` } });
+            const data = await res.json();
+            currentSha = data.sha;
+            gridState = JSON.parse(atob(data.content));
+            renderBoard();
+        } catch(e) { console.error(e); }
     }
 
-    function addToLayout(id) {
-        currentLayout.push(recipes.find(r => r.id === id));
-        document.getElementById('stats-panel').innerHTML = `閲覧モード：${currentLayout.length}件のレシピを配置中`;
-    }
-
-    function registerLayout() {
-        alert("現在のレイアウトを保存しました（機能実装中）");
-    }
-
-    function submitLogin() {
-        if(document.getElementById('login-pin').value === '1234') {
-            document.getElementById('login-modal').classList.add('hidden');
-            document.getElementById('global-save-btn').classList.remove('hidden');
-        } else { alert("PIN不正"); }
-    }
-
-    async function pushToDatabaseGitHub() {
-        const config = JSON.parse(localStorage.getItem(CONFIG_KEY));
-        const res = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/recipes.json`, {
+    async function pushToGitHub() {
+        const res = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/data.json`, {
             method: 'PUT',
             headers: { 'Authorization': `token ${config.token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 message: "更新",
-                content: btoa(unescape(encodeURIComponent(JSON.stringify(recipes)))),
-                sha: sha
+                content: btoa(JSON.stringify(gridState)),
+                sha: currentSha
             })
         });
-        if(res.ok) alert("GitHubへ保存成功");
+        if(res.ok) alert("保存成功");
     }
 
-    loadData();
+    function submitAdmin() {
+        if(document.getElementById('admin-pin').value !== '1234') return alert('PIN不正');
+        config = {
+            owner: document.getElementById('cfg-owner').value,
+            repo: document.getElementById('cfg-repo').value,
+            token: document.getElementById('cfg-token').value
+        };
+        localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+        document.getElementById('save-btn').classList.remove('hidden');
+        document.getElementById('admin-modal').classList.add('hidden');
+        loadFromGitHub();
+    }
+
+    function renderBoard() {
+        const grid = document.getElementById('grid');
+        grid.innerHTML = '';
+        gridState.forEach((val, i) => {
+            const div = document.createElement('div');
+            div.className = `cell bg-${val}`;
+            div.onclick = () => { gridState[i] = selectedColor; renderBoard(); };
+            grid.appendChild(div);
+        });
+    }
+
+    function initPalette() {
+        const p = document.getElementById('palette');
+        [0,1,2,3,4,5].forEach(c => {
+            const b = document.createElement('button');
+            b.className = `palette-btn bg-${c} ${selectedColor === c ? 'selected' : ''}`;
+            b.onclick = () => { selectedColor = c; initPalette(); };
+            p.appendChild(b);
+        });
+    }
+
+    init();
 </script>
 </body>
 </html>
