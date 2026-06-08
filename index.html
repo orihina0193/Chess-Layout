@@ -2,92 +2,110 @@
 <html lang="ja" class="dark">
 <head>
     <meta charset="UTF-8">
+    <title>Puzzles & Survival Chess Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .cell { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-        .bg-0 { background: #374151; } .bg-1 { background: #ef4444; } .bg-2 { background: #3b82f6; } 
-        .bg-3 { background: #22c55e; } .bg-4 { background: #eab308; } .bg-5 { background: #a855f7; }
-    </style>
 </head>
 <body class="bg-slate-950 text-slate-200 p-6">
     <div class="max-w-5xl mx-auto">
         <header class="flex justify-between items-center mb-6">
             <h1 class="text-xl font-black">CHESS LAYOUT MANAGER</h1>
-            <button onclick="document.getElementById('admin-modal').classList.remove('hidden')" class="text-xs bg-slate-800 px-4 py-2 rounded">管理設定</button>
+            <div class="space-x-2">
+                <button onclick="document.getElementById('admin-modal').classList.remove('hidden')" class="text-xs bg-slate-800 px-4 py-2 rounded">管理設定</button>
+            </div>
         </header>
 
         <div class="grid md:grid-cols-2 gap-8">
-            <section>
-                <h2 class="text-sm font-bold mb-2">フルレイアウト (5x7)</h2>
-                <div id="full-board" class="grid grid-cols-7 gap-1 bg-slate-900 p-2 rounded w-fit"></div>
-                <div id="stats" class="mt-4 text-xs bg-slate-900 p-4 rounded"></div>
+            <section class="bg-slate-900 p-4 rounded-xl">
+                <h2 class="text-sm font-bold mb-4">フルレイアウト (5x7)</h2>
+                <div id="full-board" class="grid grid-cols-7 gap-1 w-fit bg-slate-950 p-2 rounded"></div>
+                <div id="stats" class="mt-4 text-xs space-y-1"></div>
             </section>
-            <section>
-                <h2 class="text-sm font-bold mb-2">レシピ一覧</h2>
-                <div id="recipe-list" class="space-y-2"></div>
+            <section class="bg-slate-900 p-4 rounded-xl">
+                <h2 class="text-sm font-bold mb-4">レシピ一覧</h2>
+                <div id="recipe-list" class="space-y-2 h-[400px] overflow-y-auto pr-2"></div>
             </section>
         </div>
     </div>
 
     <div id="admin-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4">
         <div class="bg-slate-900 p-6 rounded-lg w-full max-w-sm">
-            <h2 class="font-bold mb-4">管理設定</h2>
-            <input type="password" id="pin" placeholder="PIN(4桁)" class="w-full bg-slate-800 p-2 mb-2 rounded">
-            <input type="text" id="token" placeholder="GitHub Token" class="w-full bg-slate-800 p-2 mb-2 rounded">
-            <button onclick="saveAdmin()" class="w-full bg-indigo-600 py-2 rounded">保存</button>
+            <h2 class="font-bold mb-4">GitHub同期設定</h2>
+            <input type="text" id="cfg-owner" placeholder="Owner" class="w-full bg-slate-800 p-2 mb-2 rounded text-sm">
+            <input type="text" id="cfg-repo" placeholder="Repo" class="w-full bg-slate-800 p-2 mb-2 rounded text-sm">
+            <input type="password" id="cfg-token" placeholder="GitHub PAT" class="w-full bg-slate-800 p-2 mb-2 rounded text-sm">
+            <input type="password" id="cfg-pin" placeholder="PIN(4桁)" class="w-full bg-slate-800 p-2 mb-4 rounded text-sm">
+            <button onclick="saveAdmin()" class="w-full bg-indigo-600 py-2 rounded font-bold mb-2">保存</button>
+            <button onclick="document.getElementById('admin-modal').classList.add('hidden')" class="w-full text-slate-500 text-sm">閉じる</button>
         </div>
     </div>
 
 <script>
-    let recipes = [], layout = [];
+    let recipes = [], layout = [], sha = '';
     const cfg = JSON.parse(localStorage.getItem('pz_cfg') || '{}');
 
-    // GitHubからデータを読み込む
     async function loadData() {
-        try {
-            const res = await fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/recipes.json`, {
-                headers: { 'Accept': 'application/vnd.github.v3.raw', 'Authorization': `token ${cfg.token}` }
-            });
-            recipes = await res.json();
-            renderRecipes();
-        } catch(e) { console.error("データ取得失敗:", e); }
+        if (!cfg.token) return;
+        const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/recipes.json`;
+        const res = await fetch(url, { headers: { 'Authorization': `token ${cfg.token}` } });
+        const data = await res.json();
+        sha = data.sha;
+        recipes = JSON.parse(atob(data.content));
+        renderRecipes();
+    }
+
+    async function pushToGitHub() {
+        const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/recipes.json`;
+        const body = {
+            message: "更新: " + new Date().toLocaleString(),
+            content: btoa(unescape(encodeURIComponent(JSON.stringify(recipes)))),
+            sha: sha
+        };
+        const res = await fetch(url, {
+            method: 'PUT',
+            headers: { 'Authorization': `token ${cfg.token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        if(res.ok) alert("保存成功！");
     }
 
     function renderRecipes() {
         const list = document.getElementById('recipe-list');
         list.innerHTML = recipes.map(r => `
-            <div class="flex justify-between bg-slate-800 p-2 rounded text-xs">
-                <span>${r.name}</span>
-                <button onclick="addToLayout('${r.id}')" class="bg-indigo-600 px-2 rounded">追加</button>
+            <div class="flex justify-between bg-slate-800 p-3 rounded text-xs items-center">
+                <div class="truncate mr-2">${r.name}</div>
+                <button onclick="addToLayout('${r.id}')" class="bg-indigo-600 px-3 py-1 rounded shrink-0">追加</button>
             </div>
         `).join('');
     }
 
     function addToLayout(id) {
-        if(layout.find(r => r.id === id)) return alert("重複不可");
-        layout.push(recipes.find(r => r.id === id));
+        if(layout.find(r => r.id === id)) return alert("重複使用はできません");
+        const recipe = recipes.find(r => r.id === id);
+        layout.push(recipe);
         updateStats();
     }
 
     function updateStats() {
         let cost = {red:0, blue:0, green:0, yellow:0, purple:0};
-        let buffs = {};
         layout.forEach(r => {
-            for(let c in r.cost) cost[c] += r.cost[c];
-            let k = r.effect.target + r.effect.type;
-            buffs[k] = (buffs[k] || 0) + r.effect.value;
+            Object.keys(r.cost).forEach(c => cost[c] += r.cost[c]);
         });
         document.getElementById('stats').innerHTML = `
-            <p class="text-green-400 font-bold">必要: ${JSON.stringify(cost)}</p>
-            <p>バフ: ${JSON.stringify(buffs)}</p>
+            <div class="p-3 bg-slate-950 rounded">
+                <p class="text-green-400 font-bold">必要コスト: ${JSON.stringify(cost)}</p>
+            </div>
         `;
     }
 
     function saveAdmin() {
-        localStorage.setItem('pz_cfg', JSON.stringify({
-            owner: 'YOUR_OWNER', repo: 'YOUR_REPO', pin: document.getElementById('pin').value, token: document.getElementById('token').value
-        }));
-        document.getElementById('admin-modal').classList.add('hidden');
+        const newCfg = {
+            owner: document.getElementById('cfg-owner').value,
+            repo: document.getElementById('cfg-repo').value,
+            token: document.getElementById('cfg-token').value,
+            pin: document.getElementById('cfg-pin').value
+        };
+        localStorage.setItem('pz_cfg', JSON.stringify(newCfg));
+        location.reload();
     }
 
     loadData();
