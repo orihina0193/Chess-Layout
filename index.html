@@ -821,6 +821,782 @@
         showNotification('info', '管理者モードからログアウトしました。');
       }
 
+      // --- SCRIPT BLOCK APPENDED: FULL INTERACTIVE ENGINE ---
+
+      function getColorForBlockType(blockType) {
+        switch (blockType) {
+          case 1: return '#ef4444'; 
+          case 2: return '#3b82f6'; 
+          case 3: return '#10b981'; 
+          case 4: return '#f59e0b'; 
+          case 5: return '#8b5cf6'; 
+          default: return '#94a3b8'; 
+        }
+      }
+
+      function rotateGrid90(grid) {
+        const rCount = grid.length;
+        if (rCount === 0) return [];
+        const cCount = grid[0].length;
+        const rotated = Array(cCount).fill(0).map(() => Array(rCount).fill(0));
+        for (let r = 0; r < rCount; r++) {
+          for (let c = 0; c < cCount; c++) {
+            rotated[c][rCount - 1 - r] = grid[r][c];
+          }
+        }
+        return rotated;
+      }
+
+      function getTrimmedAndNormalizedShape(grid) {
+        let minR = 4, maxR = -1;
+        let minC = 4, maxC = -1;
+        for (let r = 0; r < 4; r++) {
+          for (let c = 0; c < 4; c++) {
+            if (grid[r] && grid[r][c] > 0) {
+              if (r < minR) minR = r;
+              if (r > maxR) maxR = r;
+              if (c < minC) minC = c;
+              if (c > maxC) maxC = c;
+            }
+          }
+        }
+        if (maxR === -1) {
+          return { shape: [], width: 0, height: 0 };
+        }
+        const height = maxR - minR + 1;
+        const width = maxC - minC + 1;
+        const shape = Array(height).fill(0).map(() => Array(width).fill(0));
+        for (let r = minR; r <= maxR; r++) {
+          for (let c = minC; c <= maxC; c++) {
+            shape[r - minR][c - minC] = grid[r][c];
+          }
+        }
+        return { shape, width, height };
+      }
+
+      function activeRecipesMap(activeCandidates, spec, allowRotation) {
+        return activeCandidates.map(r => {
+          const numTiles = r.grid.flat().filter(v => v > 0).length;
+          let baseScore = r.effect.value * 100;
+          if (numTiles === 4) baseScore = 5000;
+          else if (numTiles === 3) baseScore = 2000;
+          else if (numTiles === 5) baseScore = 10000;
+          else if (numTiles === 2) baseScore = 500;
+          else if (numTiles === 1) baseScore = 100;
+
+          let score = baseScore;
+          if (r.effect.target === spec) {
+            score *= 2.0;
+          } else if (r.effect.target === 'Troop') {
+            score *= 1.25;
+          }
+
+          const orientations = [];
+          const primary = getTrimmedAndNormalizedShape(r.grid);
+          if (primary.shape.length > 0) {
+            const addOrientation = (sh) => {
+              const h = sh.length;
+              const w = sh[0].length;
+              const cells = [];
+              for (let i = 0; i < h; i++) {
+                for (let j = 0; j < w; j++) {
+                  if (sh[i][j] > 0) {
+                    cells.push({ r: i, c: j, color: sh[i][j] });
+                  }
+                }
+              }
+              orientations.push({ shape: sh, height: h, width: w, cells });
+            };
+
+            addOrientation(primary.shape);
+
+            if (allowRotation) {
+              let rot = rotateGrid90(primary.shape);
+              addOrientation(rot);
+              rot = rotateGrid90(rot);
+              addOrientation(rot);
+              rot = rotateGrid90(rot);
+              addOrientation(rot);
+            }
+          }
+
+          const uniqueOrientations = [];
+          const seen = new Set();
+          for (const o of orientations) {
+            const key = JSON.stringify(o.shape);
+            if (!seen.has(key)) {
+              seen.add(key);
+              uniqueOrientations.push(o);
+            }
+          }
+
+          return {
+            recipe: r,
+            score,
+            orientations: uniqueOrientations,
+            numTiles
+          };
+        });
+      }
+
+      function solveChessOptimizationJS(recipes, inventory, spec, allowRotation) {
+        const board = Array(5).fill(null).map(() => Array(7).fill(null));
+        const currentInv = { ...inventory };
+        const candidates = activeRecipesMap(recipes, spec, allowRotation);
+
+        candidates.sort((a, b) => {
+          const effA = a.numTiles > 0 ? a.score / a.numTiles : 0;
+          const effB = b.numTiles > 0 ? b.score / b.numTiles : 0;
+          return effB - effA || b.score - a.score;
+        });
+
+        const placedOnBoard = [];
+        const unplacedOnBoard = [];
+        const usedInventoryAmt = { red: 0, blue: 0, green: 0, yellow: 0, purple: 0 };
+        const sharingMap = Array(5).fill(null).map(() => Array(7).fill(null).map(() => []));
+
+        for (let cand of candidates) {
+          const item = cand.recipe;
+          const orientations = cand.orientations;
+          let successfullyPlaced = false;
+
+          for (let orientation of orientations) {
+            const h = orientation.height;
+            const w = orientation.width;
+
+            for (let r = 0; r <= 5 - h; r++) {
+              for (let c = 0; c <= 7 - w; c++) {
+                let canFit = true;
+                const tempUsed = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+
+                for (let cell of orientation.cells) {
+                  const br = r + cell.r;
+                  const bc = c + cell.c;
+                  const existing = board[br][bc];
+
+                  if (existing !== null) {
+                    if (existing.blockType !== cell.color) {
+                      canFit = false;
+                      break;
+                    }
+                  } else {
+                    tempUsed[cell.color]++;
+                  }
+                }
+
+                if (canFit) {
+                  if (
+                    currentInv.red >= tempUsed[1] &&
+                    currentInv.blue >= tempUsed[2] &&
+                    currentInv.green >= tempUsed[3] &&
+                    currentInv.yellow >= tempUsed[4] &&
+                    currentInv.purple >= tempUsed[5]
+                  ) {
+                    for (let cell of orientation.cells) {
+                      const br = r + cell.r;
+                      const bc = c + cell.c;
+                      
+                      sharingMap[br][bc].push({
+                        id: item.id,
+                        name: item.name,
+                        effect: item.effect
+                      });
+
+                      board[br][bc] = {
+                        recipeName: item.name,
+                        recipeId: item.id,
+                        colorHex: getColorForBlockType(cell.color),
+                        effect: item.effect,
+                        blockType: cell.color,
+                        sharingRecipes: sharingMap[br][bc]
+                      };
+                    }
+
+                    currentInv.red -= tempUsed[1];
+                    currentInv.blue -= tempUsed[2];
+                    currentInv.green -= tempUsed[3];
+                    currentInv.yellow -= tempUsed[4];
+                    currentInv.purple -= tempUsed[5];
+
+                    usedInventoryAmt.red += tempUsed[1];
+                    usedInventoryAmt.blue += tempUsed[2];
+                    usedInventoryAmt.green += tempUsed[3];
+                    usedInventoryAmt.yellow += tempUsed[4];
+                    usedInventoryAmt.purple += tempUsed[5];
+
+                    placedOnBoard.push(item);
+                    successfullyPlaced = true;
+                    break;
+                  }
+                }
+              }
+              if (successfullyPlaced) break;
+            }
+            if (successfullyPlaced) break;
+          }
+
+          if (!successfullyPlaced) {
+            unplacedOnBoard.push(item);
+          }
+        }
+
+        return {
+          board: board,
+          placedRecipes: placedOnBoard,
+          unplacedRecipes: unplacedOnBoard,
+          usedInventory: usedInventoryAmt
+        };
+      }
+
+      function handlePainterMouseDown(r, c) {
+        isDrawing = true;
+        handleCellPaint(r, c);
+      }
+
+      function handlePainterMouseOver(r, c) {
+        if (isDrawing) {
+          handleCellPaint(r, c);
+        }
+      }
+
+      function handleCellPaint(r, c) {
+        paintBoard[r][c] = paintColor;
+        updateUI();
+      }
+
+      function copyOptimizedToPaintBoard() {
+        const results = solveChessOptimizationJS(BUILTIN_RECIPES, pageInventory, selectedSpecTarget, allowShapeRotation);
+        for (let r = 0; r < 5; r++) {
+          for (let c = 0; c < 7; c++) {
+            const cell = results.board[r][c];
+            paintBoard[r][c] = cell ? cell.blockType : 0;
+          }
+        }
+        updateUI();
+        showNotification('success', '最適配置の計算結果をペイントキャンバスへコピーしました。');
+      }
+
+      function renderSidebar() {
+        const root = document.getElementById('sidebar-dynamic-root');
+        if (!root) return;
+
+        if (playerTab === 'presets') {
+          const layouts = getSavedCustomLayouts();
+          const listHtml = layouts.map(l => {
+            const isSelected = l.id === selectedPresetId;
+            const isDefault = l.id.startsWith('preset_');
+            
+            const gridPreviewStr = l.board.map(row => 
+              `<div class="flex gap-0.5 mt-0.5">` + 
+              row.map(cell => {
+                let bgClass = 'bg-slate-150';
+                if (cell === 1) bgClass = 'bg-rose-500';
+                else if (cell === 2) bgClass = 'bg-blue-500';
+                else if (cell === 3) bgClass = 'bg-emerald-500';
+                else if (cell === 4) bgClass = 'bg-amber-500';
+                else if (cell === 5) bgClass = 'bg-purple-500';
+                return `<span class="w-1.5 h-1.5 rounded-sm ${bgClass}"></span>`;
+              }).join('') + 
+              `</div>`
+            ).join('');
+
+            return `
+              <div onclick="selectPreset('${l.id}')" class="p-3.5 mb-2.5 rounded-xl border transition-all duration-200 cursor-pointer text-left select-none relative group ${
+                isSelected 
+                  ? 'bg-blue-50/50 border-blue-500 text-slate-900 shadow-sm' 
+                  : 'bg-white border-slate-200 hover:border-slate-350 text-slate-700'
+              }">
+                <div class="flex justify-between items-start gap-2">
+                  <div class="flex-1 min-w-0">
+                    <span class="text-[9px] uppercase font-mono tracking-widest block ${isSelected ? 'text-blue-600 font-bold' : 'text-slate-400'}">
+                      ${isDefault ? 'SYSTEM PRESET' : 'CUSTOM PRESET'}
+                    </span>
+                    <h4 class="text-xs font-bold leading-normal truncate mt-0.5">
+                      ${l.name}
+                    </h4>
+                  </div>
+                  ${(!isDefault && adminMode) ? `
+                    <button onclick="deleteCustomPreset('${l.id}', event)" class="text-slate-400 hover:text-red-500 p-1 rounded transition opacity-0 group-hover:opacity-100" title="削除">
+                      🗑️
+                    </button>
+                  ` : ''}
+                </div>
+                
+                <div class="flex items-center gap-3 mt-3">
+                  <div class="shrink-0 bg-slate-50 p-1 rounded-md border border-slate-100">
+                    ${gridPreviewStr}
+                  </div>
+                  <div class="text-[10px] text-slate-400 font-medium">
+                    ${l.board.flat().filter(c => c > 0).length} 個の素材配置
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          root.innerHTML = `
+            <div class="flex-1 flex flex-col min-h-0">
+              <div class="flex items-center justify-between mb-3 shrink-0">
+                <h3 class="text-xs font-bold text-slate-505 uppercase tracking-widest">
+                  SAVED PRESET LAYOUTS
+                </h3>
+                <span class="text-[9px] font-mono font-black bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">
+                  COUNT: ${layouts.length}
+                </span>
+              </div>
+              <p class="text-[10px] text-slate-450 leading-relaxed mb-4 shrink-0">
+                登録済みの盤面パターンを選択すると、その配置がChess盤面に再現され、発動バフ効果が自動分析されます。
+              </p>
+              <div class="flex-1 overflow-y-auto pr-1">
+                ${listHtml}
+              </div>
+            </div>
+          `;
+        } else if (playerTab === 'autoplace') {
+          root.innerHTML = `
+            <div class="flex-1 flex flex-col min-h-0">
+              <h3 class="text-xs font-bold text-slate-505 uppercase tracking-widest mb-3 shrink-0">
+                AUTOMATIC COMPUTATION SETTINGS
+              </h3>
+              
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1.5">
+                    特化優先ターゲット
+                  </label>
+                  <select id="spec-target-selector" onchange="onTargetSelectChange()" class="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 text-xs text-slate-700 font-bold focus:border-blue-500 rounded-lg outline-none select-none">
+                    <option value="Fighter" ${selectedSpecTarget === 'Fighter' ? 'selected' : ''}>Fighter (ファイター)</option>
+                    <option value="Rider" ${selectedSpecTarget === 'Rider' ? 'selected' : ''}>Rider (ライダー)</option>
+                    <option value="Shooter" ${selectedSpecTarget === 'Shooter' ? 'selected' : ''}>Shooter (シューター)</option>
+                    <option value="Troop" ${selectedSpecTarget === 'Troop' ? 'selected' : ''}>Troop (部隊全体優先)</option>
+                    <option value="None" ${selectedSpecTarget === 'None' ? 'selected' : ''}>None (特化なし・均等)</option>
+                  </select>
+                  <p class="text-[9px] text-slate-400 leading-normal mt-1">※選択したターゲットにバフを持つレシピの優先度を2倍に計算します。</p>
+                </div>
+
+                <div>
+                  <div class="flex justify-between items-center mb-2">
+                    <label class="text-[10px] font-bold text-slate-450 uppercase tracking-wider">
+                      所持ブロック数 (INVENTORY)
+                    </label>
+                  </div>
+                  
+                  <div class="space-y-2 bg-slate-50/50 p-3 rounded-xl border border-slate-200/60">
+                    ${['red', 'blue', 'green', 'yellow', 'purple'].map(color => {
+                      let bgDot = 'bg-rose-500';
+                      let jpLabel = '赤素材';
+                      if (color === 'blue') { bgDot = 'bg-blue-500'; jpLabel = '青素材'; }
+                      else if (color === 'green') { bgDot = 'bg-emerald-500'; jpLabel = '緑素材'; }
+                      else if (color === 'yellow') { bgDot = 'bg-amber-500'; jpLabel = '黄素材'; }
+                      else if (color === 'purple') { bgDot = 'bg-purple-500'; jpLabel = '紫素材'; }
+
+                      return `
+                        <div class="flex items-center justify-between">
+                          <div class="flex items-center gap-1.5 text-xs font-bold text-slate-750">
+                            <span class="w-2.5 h-2.5 rounded-full ${bgDot}"></span>
+                            <span>${jpLabel}</span>
+                          </div>
+                          <div class="flex items-center gap-1">
+                            <button onclick="adjustInventoryAmount('${color}', -1)" class="w-6 h-6 flex items-center justify-center text-xs font-bold hover:bg-slate-200 rounded text-slate-605 bg-slate-100 transition truncate cursor-pointer">-</button>
+                            <input type="number" id="input-qty-${color}" value="${pageInventory[color]}" onchange="onQtyInputChange('${color}')" class="w-12 h-6 text-center text-xs text-slate-800 bg-white border border-slate-200 focus:border-blue-500 outline-none rounded font-mono font-bold" />
+                            <button onclick="adjustInventoryAmount('${color}', 1)" class="w-6 h-6 flex items-center justify-center text-xs font-bold hover:bg-slate-200 rounded text-slate-605 bg-slate-100 transition truncate cursor-pointer">+</button>
+                          </div>
+                        </div>
+                      `;
+                    }).join('')}
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1.5">
+                    一括在庫セット
+                  </label>
+                  <div class="grid grid-cols-2 gap-1.5 font-bold">
+                    <button onclick="setGlobalPreset('clear')" class="px-2.5 py-1.5 text-[10px] text-slate-650 hover:bg-slate-200 bg-slate-100 rounded-lg transition-all border border-slate-250 cursor-pointer">
+                      クリア (全部0)
+                    </button>
+                    <button onclick="setGlobalPreset('low')" class="px-2.5 py-1.5 text-[10px] text-slate-655 hover:bg-slate-200 bg-slate-100 rounded-lg transition-all border border-slate-250 cursor-pointer">
+                      低コスト (各4)
+                    </button>
+                    <button onclick="setGlobalPreset('mid')" class="px-2.5 py-1.5 text-[10px] text-slate-655 hover:bg-slate-200 bg-slate-100 rounded-lg transition-all border border-slate-250 cursor-pointer">
+                      中コスト (各10)
+                    </button>
+                    <button onclick="setGlobalPreset('high')" class="px-2.5 py-1.5 text-[10px] text-slate-655 hover:bg-slate-200 bg-slate-100 rounded-lg transition-all border border-slate-250 cursor-pointer">
+                      高コスト (各20)
+                    </button>
+                  </div>
+                </div>
+
+                <div class="pt-2">
+                  <button onclick="triggerOptimizationRun()" class="w-full py-2.5 font-display text-xs font-extrabold tracking-widest uppercase text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-md cursor-pointer">
+                    ⚡ 最適配列の実行 (Run Solver)
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        } else if (playerTab === 'painter') {
+          const colorsList = [
+            { id: 0, label: '消しゴム', class: 'bg-slate-100 border-slate-350' },
+            { id: 1, label: '赤素材', class: 'bg-rose-500 border-rose-600' },
+            { id: 2, label: '青素材', class: 'bg-blue-500 border-blue-600' },
+            { id: 3, label: '緑素材', class: 'bg-emerald-500 border-emerald-600' },
+            { id: 4, label: '黄素材', class: 'bg-amber-500 border-amber-600' },
+            { id: 5, label: '紫素材', class: 'bg-purple-500 border-purple-600' }
+          ];
+
+          const colorPillsHtml = colorsList.map(item => {
+            const isActive = paintColor === item.id;
+            return `
+              <button onclick="selectPaintColor(${item.id})" class="flex items-center gap-2 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border ${
+                isActive ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-slate-200'
+              } rounded-lg text-[11px] font-bold text-slate-700 transition cursor-pointer">
+                <span class="w-3 h-3 rounded-full border border-black/10 ${item.class}"></span>
+                <span>${item.label}</span>
+              </button>
+            `;
+          }).join('');
+
+          root.innerHTML = `
+            <div class="flex-1 flex flex-col min-h-0">
+              <h3 class="text-xs font-bold text-slate-505 uppercase tracking-widest mb-3 shrink-0">
+                MANUAL CHESS BOARD PAINTER
+              </h3>
+              <p class="text-[10px] text-slate-450 leading-relaxed mb-4 shrink-0">
+                ペンカラーを選択して、中央の盤面をクリック・ドラッグで自由に塗ることができます。既存のレシピパターンを満たすと自動的にバフ効果が発現します。
+              </p>
+
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-2">
+                    ペイントカラー選択 (PALETTE)
+                  </label>
+                  <div class="grid grid-cols-2 gap-1.5">
+                    ${colorPillsHtml}
+                  </div>
+                </div>
+
+                <div class="h-px bg-slate-200 my-2 shrink-0"></div>
+
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1.5">
+                    手動の配置を保存
+                  </label>
+                  <input type="text" id="new-preset-name-input" placeholder="設計図の名前を入力" class="w-full bg-slate-50 border border-slate-200 px-3 py-2.5 text-xs text-slate-750 outline-none focus:border-blue-500 rounded-lg mb-2 font-bold" />
+                  <button onclick="saveActivePaintPreset()" class="w-full py-2.5 font-display text-[10px] font-extrabold tracking-widest uppercase text-white bg-blue-650 hover:bg-blue-700 rounded-lg transition shadow-md cursor-pointer">
+                    💾 設計図を新規保存する
+                  </button>
+                </div>
+
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-450 uppercase tracking-wider mb-1.5">
+                    ペン盤面ツール
+                  </label>
+                  <div class="flex gap-2">
+                    <button onclick="clearPaintBoard()" class="flex-1 py-2 font-display text-[10px] font-extrabold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition border border-slate-200 cursor-pointer">
+                      🧹 クリア
+                    </button>
+                    <button onclick="copyOptimizedToPaintBoard()" class="flex-1 py-2 font-display text-[10px] font-extrabold text-blue-650 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition cursor-pointer">
+                      📋 最適配列をコピー
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      function renderBoard() {
+        const container = document.getElementById('board-rows-container');
+        if (!container) return;
+
+        let activeMatrix = Array(5).fill(null).map(() => Array(7).fill(0));
+        let cellSharings = Array(5).fill(null).map(() => Array(7).fill(null).map(() => []));
+        let hoverMap = Array(5).fill(null).map(() => Array(7).fill(null));
+
+        if (playerTab === 'presets') {
+          const layouts = getSavedCustomLayouts();
+          const p = layouts.find(l => l.id === selectedPresetId);
+          if (p) {
+            for (let r = 0; r < 5; r++) {
+              for (let c = 0; c < 7; c++) {
+                activeMatrix[r][c] = p.board[r][c];
+              }
+            }
+          }
+          const matches = findMatchedPlacements(activeMatrix, BUILTIN_RECIPES);
+          matches.forEach(m => {
+            m.coords.forEach(pt => {
+              if (pt.r < 5 && pt.c < 7) {
+                cellSharings[pt.r][pt.c].push({
+                  id: m.recipe.id,
+                  name: m.recipe.name,
+                  effect: m.recipe.effect
+                });
+              }
+            });
+          });
+          for (let r = 0; r < 5; r++) {
+            for (let c = 0; c < 7; c++) {
+              if (cellSharings[r][c].length > 0) {
+                const sorted = [...cellSharings[r][c]].sort((a, b) => b.effect.value - a.effect.value);
+                hoverMap[r][c] = {
+                  colorHex: getColorForBlockType(activeMatrix[r][c]),
+                  recipeId: sorted[0].id,
+                  sharingRecipes: sorted
+                };
+              }
+            }
+          }
+
+        } else if (playerTab === 'painter') {
+          for (let r = 0; r < 5; r++) {
+            for (let c = 0; c < 7; c++) {
+              activeMatrix[r][c] = paintBoard[r][c];
+            }
+          }
+          const matches = findMatchedPlacements(activeMatrix, BUILTIN_RECIPES);
+          matches.forEach(m => {
+            m.coords.forEach(pt => {
+              if (pt.r < 5 && pt.c < 7) {
+                cellSharings[pt.r][pt.c].push({
+                  id: m.recipe.id,
+                  name: m.recipe.name,
+                  effect: m.recipe.effect
+                });
+              }
+            });
+          });
+          for (let r = 0; r < 5; r++) {
+            for (let c = 0; c < 7; c++) {
+              if (cellSharings[r][c].length > 0) {
+                const sorted = [...cellSharings[r][c]].sort((a, b) => b.effect.value - a.effect.value);
+                hoverMap[r][c] = {
+                  colorHex: getColorForBlockType(activeMatrix[r][c]),
+                  recipeId: sorted[0].id,
+                  sharingRecipes: sorted
+                };
+              }
+            }
+          }
+
+        } else if (playerTab === 'autoplace') {
+          const results = solveChessOptimizationJS(BUILTIN_RECIPES, pageInventory, selectedSpecTarget, allowShapeRotation);
+          for (let r = 0; r < 5; r++) {
+            for (let c = 0; c < 7; c++) {
+              const solverCell = results.board[r][c];
+              if (solverCell) {
+                activeMatrix[r][c] = solverCell.blockType;
+                cellSharings[r][c] = solverCell.sharingRecipes || [];
+                hoverMap[r][c] = {
+                  colorHex: solverCell.colorHex,
+                  recipeId: solverCell.recipeId,
+                  sharingRecipes: solverCell.sharingRecipes
+                };
+              }
+            }
+          }
+        }
+
+        container.innerHTML = '';
+        for (let r = 0; r < 5; r++) {
+          const rowEl = document.createElement('div');
+          rowEl.className = 'flex items-center gap-1 sm:gap-1.5';
+
+          const indicator = document.createElement('div');
+          indicator.className = 'w-5 min-[380px]:w-6 sm:w-8 font-mono font-bold text-slate-500 text-xs sm:text-sm text-center select-none';
+          indicator.innerText = `${r + 1}`;
+          rowEl.appendChild(indicator);
+
+          const colsContainer = document.createElement('div');
+          colsContainer.className = 'grid grid-cols-7 gap-1 sm:gap-1.5 w-full';
+
+          for (let c = 0; c < 7; c++) {
+            const cellColor = activeMatrix[r][c];
+            const cellInfo = hoverMap[r][c];
+            
+            const cellEl = document.createElement('div');
+            cellEl.className = `aspect-square h-12 w-12 sm:h-14 sm:w-14 min-[380px]:h-12 min-[380px]:w-12 max-[379px]:h-10 max-[379px]:w-10 rounded-lg relative flex flex-col items-center justify-center transition-all duration-200 border border-slate-200 shadow-sm cursor-pointer select-none`;
+
+            if (playerTab === 'painter') {
+              cellEl.addEventListener('mousedown', () => handlePainterMouseDown(r, c));
+              cellEl.addEventListener('mouseover', () => handlePainterMouseOver(r, c));
+            } else {
+              if (cellInfo && cellInfo.recipeId) {
+                cellEl.addEventListener('mouseenter', () => hoverBoardCell(cellInfo.recipeId));
+                cellEl.addEventListener('mouseleave', () => hoverBoardCell(null));
+              } else {
+                cellEl.addEventListener('mouseenter', () => hoverBoardCell(null));
+              }
+            }
+
+            if (cellColor > 0) {
+              let bgClass = 'bg-rose-500 border-rose-600 text-white';
+              if (cellColor === 2) bgClass = 'bg-blue-500 border-blue-600 text-white';
+              else if (cellColor === 3) bgClass = 'bg-emerald-500 border-emerald-600 text-white';
+              else if (cellColor === 4) bgClass = 'bg-amber-500 border-amber-600 text-white';
+              else if (cellColor === 5) bgClass = 'bg-purple-500 border-purple-600 text-white';
+
+              cellEl.className += ` ${bgClass}`;
+
+              const sharingRecipes = cellSharings[r][c];
+              cellEl.innerHTML = `
+                <div class="text-center w-full px-0.5 leading-none">
+                  ${sharingRecipes.length > 1 ? `
+                    <span class="absolute top-0.5 right-0.5 px-0.5 min-w-[12px] h-[12px] bg-indigo-600 text-white font-mono text-[7px] sm:text-[8px] rounded-sm font-black shadow-sm flex items-center justify-center">
+                      ${sharingRecipes.length}
+                    </span>
+                  ` : `
+                    <span class="absolute top-0.5 right-0.5 w-1 h-1 rounded-full bg-white/35"></span>
+                  `}
+                  
+                  <div class="text-[7.5px] sm:text-[9px] opacity-90 font-extrabold uppercase tracking-wide">
+                    ${sharingRecipes.length > 0 ? (
+                      sharingRecipes.length > 1 ? '共有中' : 
+                      (sharingRecipes[0].effect.target === 'Troop' ? '部隊' : 
+                       sharingRecipes[0].effect.target === 'Fighter' ? 'Fgt' : 
+                       sharingRecipes[0].effect.target === 'Rider' ? 'Rdr' : 'Sht')
+                    ) : '単体'}
+                  </div>
+
+                  <div class="font-mono text-[8px] min-[380px]:text-[9.5px] sm:text-[11px] font-black mt-1">
+                    ${sharingRecipes.length > 0 ? `
+                      +${sharingRecipes.reduce((sum, s) => sum + s.effect.value, 0).toFixed(1)}%
+                    ` : '無効'}
+                  </div>
+                </div>
+              `;
+            } else {
+              const bgPattern = (r + c) % 2 === 0 ? 'bg-slate-50 border-slate-100 hover:bg-slate-105' : 'bg-slate-100/30 border-slate-150 hover:bg-slate-105';
+              cellEl.className += ` ${bgPattern}`;
+              cellEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-slate-300 opacity-25"></span>`;
+            }
+
+            colsContainer.appendChild(cellEl);
+          }
+
+          rowEl.appendChild(colsContainer);
+          container.appendChild(rowEl);
+        }
+      }
+
+      function renderBuffs() {
+        const container = document.getElementById('buffs-progress-bars-container');
+        if (!container) return;
+
+        let activeMatrix = Array(5).fill(null).map(() => Array(7).fill(0));
+        let matched = [];
+
+        if (playerTab === 'presets') {
+          const layouts = getSavedCustomLayouts();
+          const p = layouts.find(l => l.id === selectedPresetId);
+          if (p) {
+            for (let r = 0; r < 5; r++) {
+              for (let c = 0; c < 7; c++) {
+                activeMatrix[r][c] = p.board[r][c];
+              }
+            }
+          }
+          matched = findMatchedPlacements(activeMatrix, BUILTIN_RECIPES);
+
+        } else if (playerTab === 'painter') {
+          for (let r = 0; r < 5; r++) {
+            for (let c = 0; c < 7; c++) {
+              activeMatrix[r][c] = paintBoard[r][c];
+            }
+          }
+          matched = findMatchedPlacements(activeMatrix, BUILTIN_RECIPES);
+
+        } else if (playerTab === 'autoplace') {
+          const results = solveChessOptimizationJS(BUILTIN_RECIPES, pageInventory, selectedSpecTarget, allowShapeRotation);
+          matched = results.placedRecipes.map(r => ({ recipe: r }));
+          for (let r = 0; r < 5; r++) {
+            for (let c = 0; c < 7; c++) {
+              if (results.board[r][c]) {
+                activeMatrix[r][c] = results.board[r][c].blockType;
+              }
+            }
+          }
+        }
+
+        const filledCellsCount = activeMatrix.flat().filter(c => c > 0).length;
+        const spacePercent = Math.round((filledCellsCount / 35) * 100);
+        const activeCount = matched.length;
+
+        const buffSum = {
+          'Fighter_ATK': 0,
+          'Fighter_HP': 0,
+          'Rider_ATK': 0,
+          'Rider_DEF': 0,
+          'Shooter_ATK': 0,
+          'Shooter_DEF': 0,
+          'Troop_HP': 0
+        };
+
+        matched.forEach(m => {
+          const r = m.recipe;
+          const key = `${r.effect.target}_${r.effect.type}`;
+          if (key in buffSum) {
+            buffSum[key] += r.effect.value;
+          }
+        });
+
+        const buffPresets = [
+          { key: 'Fighter_ATK', name: 'ファイター ATK', max: 10.0, color: 'bg-rose-500' },
+          { key: 'Fighter_HP', name: 'ファイター HP', max: 10.0, color: 'bg-rose-500' },
+          { key: 'Rider_ATK', name: 'ライダー ATK', max: 10.0, color: 'bg-blue-500' },
+          { key: 'Rider_DEF', name: 'ライダー DEF', max: 10.0, color: 'bg-blue-500' },
+          { key: 'Shooter_ATK', name: 'シューター ATK', max: 10.0, color: 'bg-emerald-500' },
+          { key: 'Shooter_DEF', name: 'シューター DEF', max: 10.0, color: 'bg-emerald-500' },
+          { key: 'Troop_HP', name: '部隊 HP (全体)', max: 5.0, color: 'bg-purple-500' }
+        ];
+
+        const statsHeaderHtml = `
+          <div class="grid grid-cols-2 gap-3 mb-4 select-none">
+            <div class="bg-slate-800/50 p-3 rounded border border-slate-800">
+              <div class="text-slate-400 text-[9px] uppercase font-bold tracking-wider">配分マス目</div>
+              <div class="text-base font-mono font-black text-slate-100 mt-0.5">
+                ${filledCellsCount} <span class="text-[10px] font-normal text-slate-500">/ 35 (${spacePercent}%)</span>
+              </div>
+            </div>
+            <div class="bg-slate-800/50 p-3 rounded border border-slate-800 border-l border-slate-805">
+              <div class="text-slate-400 text-[9px] uppercase font-bold tracking-wider">発動レシピ数</div>
+              <div class="text-base font-mono font-black text-slate-100 mt-0.5">
+                ${activeCount} <span class="text-[10px] font-normal text-slate-500">/ 7</span>
+              </div>
+            </div>
+          </div>
+        `;
+
+        const barsListHtml = buffPresets.map(preset => {
+          const val = buffSum[preset.key] || 0;
+          const active = val > 0;
+          const progressWidth = Math.min(100, (val / preset.max) * 100);
+
+          return `
+            <div class="p-3 bg-slate-800/30 rounded border ${active ? 'border-blue-500/30 bg-blue-950/5' : 'border-slate-800/80'} transition-all duration-300">
+              <div class="flex items-center justify-between mb-1.5">
+                <div class="flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full ${active ? 'bg-blue-400' : 'bg-slate-600'}"></span>
+                  <span class="text-[10px] uppercase font-mono tracking-wider font-bold ${active ? 'text-slate-100' : 'text-slate-400'}">
+                    ${preset.name}
+                  </span>
+                </div>
+                <span class="text-xs font-mono font-black ${active ? 'text-blue-300' : 'text-slate-500'}">
+                  +${val.toFixed(1)}%
+                </span>
+              </div>
+              <div class="h-1 bg-slate-950/80 rounded overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-300 ${active ? preset.color : 'bg-slate-800'}" style="width: ${progressWidth}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        container.innerHTML = statsHeaderHtml + `<div class="space-y-2 px-0.5">${barsListHtml}</div>`;
+      }
+
       // Central Application Rendering Loop orchestrating state changes
       function updateUI() {
         renderAdminBar();
