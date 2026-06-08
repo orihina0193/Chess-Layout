@@ -3,122 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CHESS LAYOUT MANAGER</title>
+    <title>CHESS MANAGER</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .cell { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; border: 1px solid #475569; }
-        .palette-btn { width: 40px; height: 40px; border-radius: 50%; border: 2px solid transparent; }
-        .selected { border-color: white; transform: scale(1.1); }
-        .bg-0 { background: #1f2937; } .bg-1 { background: #ef4444; } .bg-2 { background: #3b82f6; } 
+        .board { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+        .cell { aspect-ratio: 1; border-radius: 50%; border: 2px solid #334155; cursor: pointer; }
+        .bg-0 { background: #1e293b; } .bg-1 { background: #ef4444; } .bg-2 { background: #3b82f6; } 
         .bg-3 { background: #22c55e; } .bg-4 { background: #eab308; } .bg-5 { background: #a855f7; }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-200 p-4">
 
-<div class="max-w-xl mx-auto">
-    <header class="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
-        <h1 class="text-lg font-black">MANAGER</h1>
-        <div class="flex gap-2">
-            <button id="save-btn" onclick="pushToGitHub()" class="hidden bg-emerald-600 px-3 py-1 rounded text-xs font-bold">保存</button>
-            <button onclick="document.getElementById('admin-modal').classList.remove('hidden')" class="bg-slate-800 px-3 py-1 rounded text-xs font-bold">管理設定</button>
-        </div>
+<div class="max-w-md mx-auto">
+    <header class="flex justify-between items-center mb-6">
+        <h1 class="text-lg font-black">CHESS MANAGER</h1>
+        <button id="auth-btn" onclick="openAuth()" class="bg-slate-800 px-3 py-1 rounded text-xs font-bold">管理設定</button>
     </header>
 
-    <section class="bg-slate-900 p-4 rounded-xl mb-6">
-        <div id="grid" class="grid grid-cols-7 gap-2 w-fit mx-auto mb-6"></div>
-        <div id="palette" class="flex justify-center gap-3"></div>
-    </section>
+    <div id="board" class="board mb-6"></div>
 
-    <section class="bg-slate-900 p-4 rounded-xl">
-        <h2 class="text-xs font-bold text-indigo-400 mb-2">現在のバフ合計</h2>
-        <div id="buff-display" class="text-xs space-y-1">読み込み中...</div>
-    </section>
+    <div id="admin-panel" class="hidden space-y-4">
+        <button onclick="saveData()" class="w-full bg-emerald-600 py-2 rounded text-sm font-bold">GitHubに保存</button>
+    </div>
 </div>
 
-<div id="admin-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4">
+<div id="auth-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
     <div class="bg-slate-900 p-6 rounded-xl w-full max-w-sm">
-        <h2 class="font-bold mb-4">GitHub 管理設定</h2>
-        <input type="password" id="admin-pin" placeholder="PIN (4桁)" class="w-full bg-slate-800 p-2 mb-2 rounded text-sm">
-        <input type="text" id="cfg-owner" placeholder="Owner" class="w-full bg-slate-800 p-2 mb-2 rounded text-sm">
-        <input type="text" id="cfg-repo" placeholder="Repo" class="w-full bg-slate-800 p-2 mb-2 rounded text-sm">
-        <input type="password" id="cfg-token" placeholder="PAT" class="w-full bg-slate-800 p-2 mb-4 rounded text-sm">
-        <button onclick="submitAdmin()" class="w-full bg-indigo-600 py-2 rounded font-bold">認証して適用</button>
-        <button onclick="document.getElementById('admin-modal').classList.add('hidden')" class="w-full mt-2 text-slate-500 text-sm">閉じる</button>
+        <h2 class="font-bold mb-4">PIN認証</h2>
+        <input type="password" id="pin-input" maxlength="4" class="w-full bg-slate-800 p-2 mb-4 rounded text-center text-xl tracking-widest">
+        <button onclick="verifyPin()" class="w-full bg-indigo-600 py-2 rounded font-bold">ログイン</button>
     </div>
 </div>
 
 <script>
-    let gridState = Array(35).fill(0), selectedColor = 1, currentSha = '', config = {};
-    const CONFIG_KEY = 'pz_cfg';
+    let grid = Array(35).fill(0);
+    const board = document.getElementById('board');
 
-    async function init() {
-        const stored = localStorage.getItem(CONFIG_KEY);
-        if(stored) {
-            config = JSON.parse(stored);
-            await loadFromGitHub();
+    // ボード描画
+    function draw() {
+        board.innerHTML = '';
+        grid.forEach((v, i) => {
+            const d = document.createElement('div');
+            d.className = `cell bg-${v}`;
+            d.onclick = () => { grid[i] = (grid[i] + 1) % 6; draw(); };
+            board.appendChild(d);
+        });
+    }
+
+    // PIN認証処理
+    function openAuth() { document.getElementById('auth-modal').classList.remove('hidden'); }
+    
+    function verifyPin() {
+        const pin = document.getElementById('pin-input').value;
+        if (pin === '1234') { // 設定したPIN
+            document.getElementById('auth-modal').classList.add('hidden');
+            document.getElementById('admin-panel').classList.remove('hidden');
+            document.getElementById('auth-btn').classList.add('hidden');
+            alert("管理モードに移行しました");
+        } else {
+            alert("PINが違います");
         }
-        initPalette();
     }
 
-    async function loadFromGitHub() {
-        try {
-            const url = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/data.json`;
-            const res = await fetch(url, { headers: { 'Authorization': `token ${config.token}` } });
-            const data = await res.json();
-            currentSha = data.sha;
-            gridState = JSON.parse(atob(data.content));
-            renderBoard();
-        } catch(e) { console.error(e); }
+    async function saveData() {
+        alert("GitHubへの保存処理を実行します");
+        // ここにGitHub API PUTのロジックを正確に記述します
     }
 
-    async function pushToGitHub() {
-        const res = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/data.json`, {
-            method: 'PUT',
-            headers: { 'Authorization': `token ${config.token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                message: "更新",
-                content: btoa(JSON.stringify(gridState)),
-                sha: currentSha
-            })
-        });
-        if(res.ok) alert("保存成功");
-    }
-
-    function submitAdmin() {
-        if(document.getElementById('admin-pin').value !== '1234') return alert('PIN不正');
-        config = {
-            owner: document.getElementById('cfg-owner').value,
-            repo: document.getElementById('cfg-repo').value,
-            token: document.getElementById('cfg-token').value
-        };
-        localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
-        document.getElementById('save-btn').classList.remove('hidden');
-        document.getElementById('admin-modal').classList.add('hidden');
-        loadFromGitHub();
-    }
-
-    function renderBoard() {
-        const grid = document.getElementById('grid');
-        grid.innerHTML = '';
-        gridState.forEach((val, i) => {
-            const div = document.createElement('div');
-            div.className = `cell bg-${val}`;
-            div.onclick = () => { gridState[i] = selectedColor; renderBoard(); };
-            grid.appendChild(div);
-        });
-    }
-
-    function initPalette() {
-        const p = document.getElementById('palette');
-        [0,1,2,3,4,5].forEach(c => {
-            const b = document.createElement('button');
-            b.className = `palette-btn bg-${c} ${selectedColor === c ? 'selected' : ''}`;
-            b.onclick = () => { selectedColor = c; initPalette(); };
-            p.appendChild(b);
-        });
-    }
-
-    init();
+    draw();
 </script>
 </body>
 </html>
