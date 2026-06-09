@@ -1,842 +1,797 @@
-[
-  {
-    "id": "custom_1780888150623",
-    "name": "[部隊] HP 5.0%",
-    "cost": {
-      "red": 1,
-      "blue": 1,
-      "green": 1,
-      "yellow": 0,
-      "purple": 0
+{
+  "recipes": [
+    {
+      "id": "custom_1780888150623",
+      "name": "[部隊] HP 5.0%",
+      "grid": [
+        [
+          "blue",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "green",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "red",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ]
+      ],
+      "target": "army",
+      "buffType": "hp",
+      "value": 5,
+      "createdAt": 1780888150623
     },
-    "effect": {
-      "target": "Troop",
-      "type": "HP",
-      "value": 5
+    {
+      "id": "custom_1780888133234",
+      "name": "[部隊] DEF 5.0%",
+      "grid": [
+        [
+          "red",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "green",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "blue",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ]
+      ],
+      "target": "army",
+      "buffType": "def",
+      "value": 5,
+      "createdAt": 1780888133234
     },
-    "grid": [
-      [
-        2,
-        0,
-        0,
-        0
+    {
+      "id": "custom_1780888104603",
+      "name": "[Rider] DEF 10.0%",
+      "grid": [
+        [
+          "blue",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "yellow",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "purple",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ]
       ],
-      [
-        3,
-        0,
-        0,
-        0
+      "target": "rider",
+      "buffType": "def",
+      "value": 10,
+      "createdAt": 1780888104603
+    },
+    {
+      "id": "custom_1780888086166",
+      "name": "[Fighter] DEF 10.0%",
+      "grid": [
+        [
+          "green",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "yellow",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "purple",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ]
       ],
-      [
-        1,
-        0,
-        0,
-        0
+      "target": "fighter",
+      "buffType": "def",
+      "value": 10,
+      "createdAt": 1780888086166
+    },
+    {
+      "id": "custom_1780888067548",
+      "name": "[Shooter] DEF 10.0%",
+      "grid": [
+        [
+          "red",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "yellow",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "purple",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ]
       ],
-      [
-        0,
-        0,
-        0,
-        0
-      ]
-    ]
+      "target": "shooter",
+      "buffType": "def",
+      "value": 10,
+      "createdAt": 1780888067548
+    },
+    {
+      "id": "custom_1780887964739",
+      "name": "[部隊] HP 5.0% (横)",
+      "grid": [
+        [
+          "blue",
+          "green",
+          "red",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ]
+      ],
+      "target": "army",
+      "buffType": "hp",
+      "value": 5,
+      "createdAt": 1780887964739
+    },
+    {
+      "id": "custom_1780887909960",
+      "name": "[部隊] DEF 5.0% (横)",
+      "grid": [
+        [
+          "red",
+          "green",
+          "blue",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ]
+      ],
+      "target": "army",
+      "buffType": "def",
+      "value": 5,
+      "createdAt": 1780887909960
+    },
+    {
+      "id": "custom_1780887866331",
+      "name": "[Rider] HP 10.0%",
+      "grid": [
+        [
+          "blue",
+          "yellow",
+          "purple",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ]
+      ],
+      "target": "rider",
+      "buffType": "hp",
+      "value": 10,
+      "createdAt": 1780887866331
+    },
+    {
+      "id": "custom_1780887850159",
+      "name": "[Fighter] HP 10.0%",
+      "grid": [
+        [
+          "green",
+          "yellow",
+          "purple",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ]
+      ],
+      "target": "fighter",
+      "buffType": "hp",
+      "value": 10,
+      "createdAt": 1780887850159
+    },
+    {
+      "id": "custom_1780887833991",
+      "name": "[Shooter] HP 10.0%",
+      "grid": [
+        [
+          "red",
+          "yellow",
+          "purple",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ]
+      ],
+      "target": "shooter",
+      "buffType": "hp",
+      "value": 10,
+      "createdAt": 1780887833991
+    },
+    {
+      "id": "custom_1780887804307",
+      "name": "[部隊] HP 20.0%",
+      "grid": [
+        [
+          "yellow",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "yellow",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "yellow",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "yellow",
+          "empty",
+          "empty",
+          "empty"
+        ]
+      ],
+      "target": "army",
+      "buffType": "hp",
+      "value": 20,
+      "createdAt": 1780887804307
+    },
+    {
+      "id": "custom_1780887783231",
+      "name": "[部隊] DEF 20.0%",
+      "grid": [
+        [
+          "purple",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "purple",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "purple",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "purple",
+          "empty",
+          "empty",
+          "empty"
+        ]
+      ],
+      "target": "army",
+      "buffType": "def",
+      "value": 20,
+      "createdAt": 1780887783231
+    },
+    {
+      "id": "custom_1780832897911",
+      "name": "[Shooter] ATK 20.0%",
+      "grid": [
+        [
+          "red",
+          "red",
+          "red",
+          "red"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ]
+      ],
+      "target": "shooter",
+      "buffType": "atk",
+      "value": 20,
+      "createdAt": 1780832897911
+    },
+    {
+      "id": "def_recipe_1",
+      "name": "[Fighter] ATK 20.0%",
+      "grid": [
+        [
+          "green",
+          "green",
+          "green",
+          "green"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ]
+      ],
+      "target": "fighter",
+      "buffType": "atk",
+      "value": 20,
+      "createdAt": 1780975801077
+    },
+    {
+      "id": "def_recipe_2",
+      "name": "[Rider] ATK 20.0%",
+      "grid": [
+        [
+          "blue",
+          "blue",
+          "blue",
+          "blue"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ]
+      ],
+      "target": "rider",
+      "buffType": "atk",
+      "value": 20,
+      "createdAt": 1780975802077
+    },
+    {
+      "id": "def_recipe_3",
+      "name": "[部隊] DEF 20.0% (横)",
+      "grid": [
+        [
+          "purple",
+          "purple",
+          "purple",
+          "purple"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ]
+      ],
+      "target": "army",
+      "buffType": "def",
+      "value": 20,
+      "createdAt": 1780975803077
+    },
+    {
+      "id": "def_recipe_4",
+      "name": "[部隊] HP 20.0% (横)",
+      "grid": [
+        [
+          "yellow",
+          "yellow",
+          "yellow",
+          "yellow"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "empty",
+          "empty",
+          "empty",
+          "empty"
+        ]
+      ],
+      "target": "army",
+      "buffType": "hp",
+      "value": 20,
+      "createdAt": 1780975804077
+    },
+    {
+      "id": "def_recipe_5",
+      "name": "[Shooter] ATK 20.0% (縦)",
+      "grid": [
+        [
+          "red",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "red",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "red",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "red",
+          "empty",
+          "empty",
+          "empty"
+        ]
+      ],
+      "target": "shooter",
+      "buffType": "atk",
+      "value": 20,
+      "createdAt": 1780975805077
+    },
+    {
+      "id": "def_recipe_6",
+      "name": "[Fighter] ATK 20.0% (縦)",
+      "grid": [
+        [
+          "green",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "green",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "green",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "green",
+          "empty",
+          "empty",
+          "empty"
+        ]
+      ],
+      "target": "fighter",
+      "buffType": "atk",
+      "value": 20,
+      "createdAt": 1780975806077
+    },
+    {
+      "id": "def_recipe_7",
+      "name": "[Rider] ATK 20.0% (縦)",
+      "grid": [
+        [
+          "blue",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "blue",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "blue",
+          "empty",
+          "empty",
+          "empty"
+        ],
+        [
+          "blue",
+          "empty",
+          "empty",
+          "empty"
+        ]
+      ],
+      "target": "rider",
+      "buffType": "atk",
+      "value": 20,
+      "createdAt": 1780975807077
+    }
+  ],
+  "layouts": [
+    {
+      "id": "layout-1",
+      "name": "ファイター/ライダー ★オススメ",
+      "grid": [
+        [
+          "blue",
+          "blue",
+          "blue",
+          "blue",
+          "red",
+          "yellow",
+          "purple"
+        ],
+        [
+          "blue",
+          "green",
+          "green",
+          "green",
+          "green",
+          "yellow",
+          "purple"
+        ],
+        [
+          "blue",
+          "green",
+          "red",
+          "green",
+          "blue",
+          "yellow",
+          "purple"
+        ],
+        [
+          "blue",
+          "green",
+          "yellow",
+          "yellow",
+          "yellow",
+          "yellow",
+          "purple"
+        ],
+        [
+          "empty",
+          "green",
+          "purple",
+          "purple",
+          "purple",
+          "purple",
+          "empty"
+        ]
+      ],
+      "createdAt": 1780974335293
+    },
+    {
+      "id": "layout-1780975978192",
+      "name": "ファイター/シューター ★オススメ",
+      "grid": [
+        [
+          "red",
+          "red",
+          "red",
+          "red",
+          "blue",
+          "yellow",
+          "purple"
+        ],
+        [
+          "red",
+          "green",
+          "green",
+          "green",
+          "green",
+          "yellow",
+          "purple"
+        ],
+        [
+          "red",
+          "green",
+          "blue",
+          "green",
+          "red",
+          "yellow",
+          "purple"
+        ],
+        [
+          "red",
+          "green",
+          "yellow",
+          "yellow",
+          "yellow",
+          "yellow",
+          "purple"
+        ],
+        [
+          "empty",
+          "green",
+          "purple",
+          "purple",
+          "purple",
+          "purple",
+          "empty"
+        ]
+      ],
+      "createdAt": 1780975978192
+    }
+  ],
+  "githubConfig": {
+    "owner": "orihina0193",
+    "repo": "Chess-Layout",
+    "path": "recipes.json",
+    "token": ""
   },
-  {
-    "id": "custom_1780888133234",
-    "name": "[部隊] DEF 5.0%",
-    "cost": {
-      "red": 1,
-      "blue": 1,
-      "green": 1,
-      "yellow": 0,
-      "purple": 0
-    },
-    "effect": {
-      "target": "Troop",
-      "type": "DEF",
-      "value": 5
-    },
-    "grid": [
-      [
-        1,
-        0,
-        0,
-        0
-      ],
-      [
-        3,
-        0,
-        0,
-        0
-      ],
-      [
-        2,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ]
-    ]
-  },
-  {
-    "id": "custom_1780888104603",
-    "name": "[Rider] DEF 10.0%",
-    "cost": {
-      "red": 0,
-      "blue": 1,
-      "green": 0,
-      "yellow": 1,
-      "purple": 1
-    },
-    "effect": {
-      "target": "Rider",
-      "type": "DEF",
-      "value": 10
-    },
-    "grid": [
-      [
-        2,
-        0,
-        0,
-        0
-      ],
-      [
-        4,
-        0,
-        0,
-        0
-      ],
-      [
-        5,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ]
-    ]
-  },
-  {
-    "id": "custom_1780888086166",
-    "name": "[Fighter] DEF 10.0%",
-    "cost": {
-      "red": 0,
-      "blue": 0,
-      "green": 1,
-      "yellow": 1,
-      "purple": 1
-    },
-    "effect": {
-      "target": "Fighter",
-      "type": "DEF",
-      "value": 10
-    },
-    "grid": [
-      [
-        3,
-        0,
-        0,
-        0
-      ],
-      [
-        4,
-        0,
-        0,
-        0
-      ],
-      [
-        5,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ]
-    ]
-  },
-  {
-    "id": "custom_1780888067548",
-    "name": "[Shooter] DEF 10.0%",
-    "cost": {
-      "red": 1,
-      "blue": 0,
-      "green": 0,
-      "yellow": 1,
-      "purple": 1
-    },
-    "effect": {
-      "target": "Shooter",
-      "type": "DEF",
-      "value": 10
-    },
-    "grid": [
-      [
-        1,
-        0,
-        0,
-        0
-      ],
-      [
-        4,
-        0,
-        0,
-        0
-      ],
-      [
-        5,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ]
-    ]
-  },
-  {
-    "id": "custom_1780887964739",
-    "name": "[部隊] HP 5.0%",
-    "cost": {
-      "red": 1,
-      "blue": 1,
-      "green": 1,
-      "yellow": 0,
-      "purple": 0
-    },
-    "effect": {
-      "target": "Troop",
-      "type": "HP",
-      "value": 5
-    },
-    "grid": [
-      [
-        2,
-        3,
-        1,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ]
-    ]
-  },
-  {
-    "id": "custom_1780887909960",
-    "name": "[部隊] DEF 5.0%",
-    "cost": {
-      "red": 1,
-      "blue": 1,
-      "green": 1,
-      "yellow": 0,
-      "purple": 0
-    },
-    "effect": {
-      "target": "Troop",
-      "type": "DEF",
-      "value": 5
-    },
-    "grid": [
-      [
-        1,
-        3,
-        2,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ]
-    ]
-  },
-  {
-    "id": "custom_1780887866331",
-    "name": "[Rider] HP 10.0%",
-    "cost": {
-      "red": 0,
-      "blue": 1,
-      "green": 0,
-      "yellow": 1,
-      "purple": 1
-    },
-    "effect": {
-      "target": "Rider",
-      "type": "HP",
-      "value": 10
-    },
-    "grid": [
-      [
-        2,
-        4,
-        5,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ]
-    ]
-  },
-  {
-    "id": "custom_1780887850159",
-    "name": "[Fighter] HP 10.0%",
-    "cost": {
-      "red": 0,
-      "blue": 0,
-      "green": 1,
-      "yellow": 1,
-      "purple": 1
-    },
-    "effect": {
-      "target": "Fighter",
-      "type": "HP",
-      "value": 10
-    },
-    "grid": [
-      [
-        3,
-        4,
-        5,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ]
-    ]
-  },
-  {
-    "id": "custom_1780887833991",
-    "name": "[Shooter] HP 10.0%",
-    "cost": {
-      "red": 1,
-      "blue": 0,
-      "green": 0,
-      "yellow": 1,
-      "purple": 1
-    },
-    "effect": {
-      "target": "Shooter",
-      "type": "HP",
-      "value": 10
-    },
-    "grid": [
-      [
-        1,
-        4,
-        5,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ]
-    ]
-  },
-  {
-    "id": "custom_1780887804307",
-    "name": "[部隊] HP 20.0%",
-    "cost": {
-      "red": 0,
-      "blue": 0,
-      "green": 0,
-      "yellow": 4,
-      "purple": 0
-    },
-    "effect": {
-      "target": "Troop",
-      "type": "HP",
-      "value": 20
-    },
-    "grid": [
-      [
-        4,
-        0,
-        0,
-        0
-      ],
-      [
-        4,
-        0,
-        0,
-        0
-      ],
-      [
-        4,
-        0,
-        0,
-        0
-      ],
-      [
-        4,
-        0,
-        0,
-        0
-      ]
-    ]
-  },
-  {
-    "id": "custom_1780887783231",
-    "name": "[部隊] DEF 20.0%",
-    "cost": {
-      "red": 0,
-      "blue": 0,
-      "green": 0,
-      "yellow": 0,
-      "purple": 4
-    },
-    "effect": {
-      "target": "Troop",
-      "type": "DEF",
-      "value": 20
-    },
-    "grid": [
-      [
-        5,
-        0,
-        0,
-        0
-      ],
-      [
-        5,
-        0,
-        0,
-        0
-      ],
-      [
-        5,
-        0,
-        0,
-        0
-      ],
-      [
-        5,
-        0,
-        0,
-        0
-      ]
-    ]
-  },
-  {
-    "id": "custom_1780832897911",
-    "name": "[Shooter] ATK 20.0%",
-    "cost": {
-      "red": 4,
-      "blue": 0,
-      "green": 0,
-      "yellow": 0,
-      "purple": 0
-    },
-    "effect": {
-      "target": "Shooter",
-      "type": "ATK",
-      "value": 20
-    },
-    "grid": [
-      [
-        1,
-        1,
-        1,
-        1
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ]
-    ]
-  },
-  {
-    "id": "def_recipe_1",
-    "name": "[Fighter] ATK 20.0%",
-    "cost": {
-      "red": 0,
-      "blue": 0,
-      "green": 4,
-      "yellow": 0,
-      "purple": 0
-    },
-    "effect": {
-      "target": "Fighter",
-      "type": "ATK",
-      "value": 20
-    },
-    "grid": [
-      [
-        3,
-        3,
-        3,
-        3
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ]
-    ]
-  },
-  {
-    "id": "def_recipe_2",
-    "name": "[Rider] ATK 20.0%",
-    "cost": {
-      "red": 0,
-      "blue": 4,
-      "green": 0,
-      "yellow": 0,
-      "purple": 0
-    },
-    "effect": {
-      "target": "Rider",
-      "type": "ATK",
-      "value": 20
-    },
-    "grid": [
-      [
-        2,
-        2,
-        2,
-        2
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ]
-    ]
-  },
-  {
-    "id": "def_recipe_3",
-    "name": "[部隊] DEF 20.0%",
-    "cost": {
-      "red": 0,
-      "blue": 0,
-      "green": 0,
-      "yellow": 0,
-      "purple": 4
-    },
-    "effect": {
-      "target": "Troop",
-      "type": "DEF",
-      "value": 20
-    },
-    "grid": [
-      [
-        5,
-        5,
-        5,
-        5
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ]
-    ]
-  },
-  {
-    "id": "def_recipe_4",
-    "name": "[部隊] HP 20.0%",
-    "cost": {
-      "red": 0,
-      "blue": 0,
-      "green": 0,
-      "yellow": 4,
-      "purple": 0
-    },
-    "effect": {
-      "target": "Troop",
-      "type": "HP",
-      "value": 20
-    },
-    "grid": [
-      [
-        4,
-        4,
-        4,
-        4
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0
-      ]
-    ]
-  },
-  {
-    "id": "def_recipe_5",
-    "name": "[Shooter] ATK 20.0%",
-    "cost": {
-      "red": 4,
-      "blue": 0,
-      "green": 0,
-      "yellow": 0,
-      "purple": 0
-    },
-    "effect": {
-      "target": "Shooter",
-      "type": "ATK",
-      "value": 20
-    },
-    "grid": [
-      [
-        1,
-        0,
-        0,
-        0
-      ],
-      [
-        1,
-        0,
-        0,
-        0
-      ],
-      [
-        1,
-        0,
-        0,
-        0
-      ],
-      [
-        1,
-        0,
-        0,
-        0
-      ]
-    ]
-  },
-  {
-    "id": "def_recipe_6",
-    "name": "[Fighter] ATK 20.0%",
-    "cost": {
-      "red": 0,
-      "blue": 0,
-      "green": 4,
-      "yellow": 0,
-      "purple": 0
-    },
-    "effect": {
-      "target": "Fighter",
-      "type": "ATK",
-      "value": 20
-    },
-    "grid": [
-      [
-        3,
-        0,
-        0,
-        0
-      ],
-      [
-        3,
-        0,
-        0,
-        0
-      ],
-      [
-        3,
-        0,
-        0,
-        0
-      ],
-      [
-        3,
-        0,
-        0,
-        0
-      ]
-    ]
-  },
-  {
-    "id": "def_recipe_7",
-    "name": "[Rider] ATK 20.0%",
-    "cost": {
-      "red": 0,
-      "blue": 4,
-      "green": 0,
-      "yellow": 0,
-      "purple": 0
-    },
-    "effect": {
-      "target": "Rider",
-      "type": "ATK",
-      "value": 20
-    },
-    "grid": [
-      [
-        2,
-        0,
-        0,
-        0
-      ],
-      [
-        2,
-        0,
-        0,
-        0
-      ],
-      [
-        2,
-        0,
-        0,
-        0
-      ],
-      [
-        2,
-        0,
-        0,
-        0
-      ]
-    ]
-  }
-]
+  "pin": "1234"
+}
