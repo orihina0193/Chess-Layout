@@ -1037,26 +1037,74 @@
         const [newPin, setNewPin] = useState('');
         const [pinChangeSuccess, setPinChangeSuccess] = useState(false);
 
-        // Trigger manual local storage loads
+        // Trigger manual local storage loads: Check remote recipes.json FIRST for public sharing, fallback to local storage / defaults
         useEffect(() => {
-          const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-          if (saved) {
+          const loadInitialData = async () => {
+            let dataLoaded = false;
+
+            // 1. Try to fetch from remote recipes.json (e.g. GitHub Pages hosted file)
             try {
-              const parsed = JSON.parse(saved);
-              const normalized = normalizeGithubData(parsed);
-              setRecipes(normalized.recipes || DEFAULT_RECIPES);
-              setLayouts(normalized.layouts || DEFAULT_LAYOUTS);
-              setPin(normalized.pin || '1234');
-              if (normalized.githubConfig) {
-                setGithubConfig(normalized.githubConfig);
-              }
-              if (normalized.layouts && normalized.layouts.length > 0) {
-                setSelectedLayoutId(normalized.layouts[0].id);
+              const response = await fetch('./recipes.json', { cache: 'no-store' });
+              if (response.ok) {
+                const remoteData = await response.json();
+                // Keep local config / pin if available locally to avoid overwriting admin settings
+                const localSaved = localStorage.getItem(LOCAL_STORAGE_KEY);
+                let localParsed = {};
+                if (localSaved) {
+                  try { localParsed = JSON.parse(localSaved); } catch (e) {}
+                }
+
+                const combined = {
+                  ...remoteData,
+                  githubConfig: localParsed.githubConfig || remoteData.githubConfig,
+                  pin: localParsed.pin || remoteData.pin || '1234'
+                };
+
+                const normalized = normalizeGithubData(combined);
+                setRecipes(normalized.recipes || DEFAULT_RECIPES);
+                setLayouts(normalized.layouts || DEFAULT_LAYOUTS);
+                setPin(normalized.pin || '1234');
+                if (normalized.githubConfig) {
+                  setGithubConfig(normalized.githubConfig);
+                }
+                
+                if (normalized.layouts && normalized.layouts.length > 0) {
+                  setSelectedLayoutId(normalized.layouts[0].id);
+                }
+
+                // Cache locally
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(combined));
+                dataLoaded = true;
+                console.log('Successfully auto-fetched and synchronized with remote recipes.json');
               }
             } catch (err) {
-              console.error('Failed to parse localStorage data', err);
+              console.warn('Could not auto-fetch optional remote recipes.json, falling back to local storage', err);
             }
-          }
+
+            // 2. Fallback to local storage if remote fetch was not successful
+            if (!dataLoaded) {
+              const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+              if (saved) {
+                try {
+                  const parsed = JSON.parse(saved);
+                  const normalized = normalizeGithubData(parsed);
+                  setRecipes(normalized.recipes || DEFAULT_RECIPES);
+                  setLayouts(normalized.layouts || DEFAULT_LAYOUTS);
+                  setPin(normalized.pin || '1234');
+                  if (normalized.githubConfig) {
+                    setGithubConfig(normalized.githubConfig);
+                  }
+                  if (normalized.layouts && normalized.layouts.length > 0) {
+                    setSelectedLayoutId(normalized.layouts[0].id);
+                  }
+                } catch (err) {
+                  console.error('Failed to parse localStorage data', err);
+                }
+              }
+            }
+          };
+
+          loadInitialData();
         }, []);
 
         // Keep selectedLayoutId pointing to a valid layout
