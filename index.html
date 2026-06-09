@@ -1,100 +1,1983 @@
-<!DOCTYPE html>
-<html lang="ja" class="dark">
-<head>
-    <meta charset="UTF-8">
-    <title>CHESS LAYOUT MANAGER</title>
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>チェスレシピ＆フルレイアウト解析ツール (GitHub Standalone)</title>
+    <!-- Tailwind CSS Play CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .grid-5x7 { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-        .cell { aspect-ratio: 1; border-radius: 50%; border: 1px solid #475569; }
-        .bg-0 { background: #1f2937; } /* 空 */
-        .bg-1 { background: #ef4444; } /* 赤 */
-        .bg-2 { background: #3b82f6; } /* 青 */
-        .bg-3 { background: #22c55e; } /* 緑 */
-        .bg-4 { background: #eab308; } /* 黄 */
-        .bg-5 { background: #a855f7; } /* 紫 */
-    </style>
-</head>
-<body class="bg-slate-950 text-slate-200 p-4">
-    <div class="max-w-xl mx-auto">
-        <header class="flex justify-between items-center mb-6">
-            <h1 class="text-xl font-bold">CHESS MANAGER</h1>
-            <div id="mode-indicator" class="px-3 py-1 bg-slate-800 rounded text-xs">閲覧モード</div>
-        </header>
-
-        <section id="admin-section" class="hidden mb-6 p-4 bg-slate-900 rounded-xl">
-            <h2 class="text-sm font-bold mb-2">管理設定</h2>
-            <input type="text" id="cfg-owner" placeholder="Owner" class="w-full bg-slate-800 p-2 mb-2 rounded text-sm">
-            <input type="text" id="cfg-repo" placeholder="Repo" class="w-full bg-slate-800 p-2 mb-2 rounded text-sm">
-            <input type="password" id="cfg-token" placeholder="GitHub PAT" class="w-full bg-slate-800 p-2 mb-2 rounded text-sm">
-            <button onclick="saveConfig()" class="w-full bg-emerald-600 py-2 rounded text-sm font-bold">設定保存</button>
-        </section>
-
-        <div id="board" class="grid-5x7 mb-6"></div>
-
-        <div id="stats" class="p-4 bg-slate-900 rounded-xl text-sm">
-            <h2 class="font-bold text-indigo-400 mb-2">発動中のバフ・必要数</h2>
-            <div id="buff-list">レシピを選択してください</div>
-        </div>
-
-        <button onclick="document.getElementById('auth-modal').classList.remove('hidden')" class="mt-4 text-xs text-slate-500 underline">管理モードへ</button>
-    </div>
-
-    <div id="auth-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4">
-        <div class="bg-slate-900 p-6 rounded-xl w-full max-w-sm">
-            <input type="password" id="pin-input" placeholder="PIN (4桁)" class="w-full bg-slate-800 p-2 mb-4 rounded text-center text-xl">
-            <button onclick="checkPin()" class="w-full bg-indigo-600 py-2 rounded font-bold">認証</button>
-        </div>
-    </div>
-
     <script>
-        let recipes = []; // GitHubから読み込むレシピ
-        
-        // 初期化: GitHubから recipes.json を取得
-        async function init() {
-            const config = JSON.parse(localStorage.getItem('gh_config') || '{}');
-            if(config.token) {
-                try {
-                    const res = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/contents/recipes.json`, {
-                        headers: {'Authorization': `token ${config.token}`}
-                    });
-                    const data = await res.json();
-                    recipes = JSON.parse(atob(data.content)).recipes;
-                    console.log("レシピ読み込み完了", recipes);
-                } catch(e) { console.error("読み込み失敗"); }
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              zinc: {
+                250: '#e4e4e7',
+                350: '#b1b1b7',
+                450: '#71717a',
+                805: '#1f1f23',
+                850: '#18181b',
+              }
+            },
+            boxShadow: {
+              '3xs': '0 1px 2px 0 rgba(0, 0, 0, 0.03)',
             }
+          }
         }
-
-        function checkPin() {
-            if(document.getElementById('pin-input').value === '1234') {
-                document.getElementById('admin-section').classList.remove('hidden');
-                document.getElementById('mode-indicator').innerText = "管理モード";
-                document.getElementById('auth-modal').classList.add('hidden');
-            } else { alert("PIN不正"); }
-        }
-
-        function saveConfig() {
-            localStorage.setItem('gh_config', JSON.stringify({
-                owner: document.getElementById('cfg-owner').value,
-                repo: document.getElementById('cfg-repo').value,
-                token: document.getElementById('cfg-token').value
-            }));
-            alert("保存しました");
-        }
-
-        // ボード初期描画（5x7）
-        function drawBoard() {
-            const b = document.getElementById('board');
-            b.innerHTML = '';
-            for(let i=0; i<35; i++) {
-                const cell = document.createElement('div');
-                cell.className = 'cell bg-0';
-                b.appendChild(cell);
-            }
-        }
-
-        init();
-        drawBoard();
+      }
     </script>
-</body>
+    <!-- Google Fonts of premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      }
+      .font-mono {
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+      }
+      /* Custom scrollbar for recipe container lists */
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 9999px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+    </style>
+  </head>
+  <body class="bg-[#f8fafc] text-zinc-800 antialiased min-h-screen pb-12">
+
+    <!-- App Root container -->
+    <div id="root"></div>
+
+    <!-- React 18, ReactDOM 18 and Babel standalone via CDNs -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Transpiled React JSX application -->
+    <script type="text/babel">
+      const { useState, useEffect, useMemo, useRef } = React;
+
+      // Type labels
+      const TARGET_LABELS = {
+        fighter: 'ファイター',
+        rider: 'ライダー',
+        shooter: 'シューター',
+        army: '部隊',
+      };
+
+      const BUFF_TYPE_LABELS = {
+        atk: 'ATK',
+        def: 'DEF',
+        hp: 'HP',
+      };
+
+      const CHESS_COLOR_LABELS = {
+        red: '赤',
+        blue: '青',
+        green: '緑',
+        yellow: '黄',
+        purple: '紫',
+        empty: '空き',
+      };
+
+      // Configuration for tailwind display colors
+      const CHESS_COLOR_TAILWIND = {
+        red: { bg: 'bg-rose-500 hover:bg-rose-600 active:bg-rose-700', text: 'text-white', border: 'border-rose-600', label: '赤', fontColor: '#ffffff' },
+        blue: { bg: 'bg-sky-500 hover:bg-sky-600 active:bg-sky-700', text: 'text-white', border: 'border-sky-600', label: '青', fontColor: '#ffffff' },
+        green: { bg: 'bg-emerald-500 hover:bg-emerald-650 active:bg-emerald-700', text: 'text-white', border: 'border-emerald-600', label: '緑', fontColor: '#ffffff' },
+        yellow: { bg: 'bg-amber-400 hover:bg-amber-500 active:bg-amber-600', text: 'text-amber-950', border: 'border-amber-500', label: '黄', fontColor: '#451a03' },
+        purple: { bg: 'bg-violet-600 hover:bg-violet-700 active:bg-violet-800', text: 'text-white', border: 'border-violet-700', label: '紫', fontColor: '#ffffff' },
+      };
+
+      // Default recipes fallback data
+      const DEFAULT_RECIPES = [
+        {
+          id: "custom_1780888150623",
+          name: "[部隊] HP 5.0%",
+          grid: [
+            ['blue', 'empty', 'empty', 'empty'],
+            ['green', 'empty', 'empty', 'empty'],
+            ['red', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty']
+          ],
+          target: 'army',
+          buffType: 'hp',
+          value: 5,
+          createdAt: 1780888150623
+        },
+        {
+          id: "custom_1780888133234",
+          name: "[部隊] DEF 5.0%",
+          grid: [
+            ['red', 'empty', 'empty', 'empty'],
+            ['green', 'empty', 'empty', 'empty'],
+            ['blue', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty']
+          ],
+          target: 'army',
+          buffType: 'def',
+          value: 5,
+          createdAt: 1780888133234
+        },
+        {
+          id: "custom_1780888104603",
+          name: "[Rider] DEF 10.0%",
+          grid: [
+            ['blue', 'empty', 'empty', 'empty'],
+            ['yellow', 'empty', 'empty', 'empty'],
+            ['purple', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty']
+          ],
+          target: 'rider',
+          buffType: 'def',
+          value: 10,
+          createdAt: 1780888104603
+        },
+        {
+          id: "custom_1780888086166",
+          name: "[Fighter] DEF 10.0%",
+          grid: [
+            ['green', 'empty', 'empty', 'empty'],
+            ['yellow', 'empty', 'empty', 'empty'],
+            ['purple', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty']
+          ],
+          target: 'fighter',
+          buffType: 'def',
+          value: 10,
+          createdAt: 1780888086166
+        },
+        {
+          id: "custom_1780888067548",
+          name: "[Shooter] DEF 10.0%",
+          grid: [
+            ['red', 'empty', 'empty', 'empty'],
+            ['yellow', 'empty', 'empty', 'empty'],
+            ['purple', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty']
+          ],
+          target: 'shooter',
+          buffType: 'def',
+          value: 10,
+          createdAt: 1780888067548
+        },
+        {
+          id: "custom_1780887964739",
+          name: "[部隊] HP 5.0% (横)",
+          grid: [
+            ['blue', 'green', 'red', 'empty'],
+            ['empty', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty']
+          ],
+          target: 'army',
+          buffType: 'hp',
+          value: 5,
+          createdAt: 1780887964739
+        },
+        {
+          id: "custom_1780887909960",
+          name: "[部隊] DEF 5.0% (横)",
+          grid: [
+            ['red', 'green', 'blue', 'empty'],
+            ['empty', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty']
+          ],
+          target: 'army',
+          buffType: 'def',
+          value: 5,
+          createdAt: 1780887909960
+        },
+        {
+          id: "custom_1780887866331",
+          name: "[Rider] HP 10.0%",
+          grid: [
+            ['blue', 'yellow', 'purple', 'empty'],
+            ['empty', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty']
+          ],
+          target: 'rider',
+          buffType: 'hp',
+          value: 10,
+          createdAt: 1780887866331
+        },
+        {
+          id: "custom_1780887850159",
+          name: "[Fighter] HP 10.0%",
+          grid: [
+            ['green', 'yellow', 'purple', 'empty'],
+            ['empty', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty']
+          ],
+          target: 'fighter',
+          buffType: 'hp',
+          value: 10,
+          createdAt: 1780887850159
+        },
+        {
+          id: "custom_1780887833991",
+          name: "[Shooter] HP 10.0%",
+          grid: [
+            ['red', 'yellow', 'purple', 'empty'],
+            ['empty', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty']
+          ],
+          target: 'shooter',
+          buffType: 'hp',
+          value: 10,
+          createdAt: 1780887833991
+        },
+        {
+          id: "custom_1780887804307",
+          name: "[部隊] HP 20.0%",
+          grid: [
+            ['yellow', 'empty', 'empty', 'empty'],
+            ['yellow', 'empty', 'empty', 'empty'],
+            ['yellow', 'empty', 'empty', 'empty'],
+            ['yellow', 'empty', 'empty', 'empty']
+          ],
+          target: 'army',
+          buffType: 'hp',
+          value: 20,
+          createdAt: 1780887804307
+        },
+        {
+          id: "custom_1780887783231",
+          name: "[部隊] DEF 20.0%",
+          grid: [
+            ['purple', 'empty', 'empty', 'empty'],
+            ['purple', 'empty', 'empty', 'empty'],
+            ['purple', 'empty', 'empty', 'empty'],
+            ['purple', 'empty', 'empty', 'empty']
+          ],
+          target: 'army',
+          buffType: 'def',
+          value: 20,
+          createdAt: 1780887783231
+        },
+        {
+          id: "custom_1780832897911",
+          name: "[Shooter] ATK 20.0%",
+          grid: [
+            ['red', 'red', 'red', 'red'],
+            ['empty', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty']
+          ],
+          target: 'shooter',
+          buffType: 'atk',
+          value: 20,
+          createdAt: 1780832897911
+        },
+        {
+          id: "def_recipe_1",
+          name: "[Fighter] ATK 20.0%",
+          grid: [
+            ['green', 'green', 'green', 'green'],
+            ['empty', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty']
+          ],
+          target: 'fighter',
+          buffType: 'atk',
+          value: 20,
+          createdAt: Date.now() - 7000
+        },
+        {
+          id: "def_recipe_2",
+          name: "[Rider] ATK 20.0%",
+          grid: [
+            ['blue', 'blue', 'blue', 'blue'],
+            ['empty', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty']
+          ],
+          target: 'rider',
+          buffType: 'atk',
+          value: 20,
+          createdAt: Date.now() - 6000
+        },
+        {
+          id: "def_recipe_3",
+          name: "[部隊] DEF 20.0% (横)",
+          grid: [
+            ['purple', 'purple', 'purple', 'purple'],
+            ['empty', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty']
+          ],
+          target: 'army',
+          buffType: 'def',
+          value: 20,
+          createdAt: Date.now() - 5000
+        },
+        {
+          id: "def_recipe_4",
+          name: "[部隊] HP 20.0% (横)",
+          grid: [
+            ['yellow', 'yellow', 'yellow', 'yellow'],
+            ['empty', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty']
+          ],
+          target: 'army',
+          buffType: 'hp',
+          value: 20,
+          createdAt: Date.now() - 4000
+        },
+        {
+          id: "def_recipe_5",
+          name: "[Shooter] ATK 20.0% (縦)",
+          grid: [
+            ['red', 'empty', 'empty', 'empty'],
+            ['red', 'empty', 'empty', 'empty'],
+            ['red', 'empty', 'empty', 'empty'],
+            ['red', 'empty', 'empty', 'empty']
+          ],
+          target: 'shooter',
+          buffType: 'atk',
+          value: 20,
+          createdAt: Date.now() - 3000
+        },
+        {
+          id: "def_recipe_6",
+          name: "[Fighter] ATK 20.0% (縦)",
+          grid: [
+            ['green', 'empty', 'empty', 'empty'],
+            ['green', 'empty', 'empty', 'empty'],
+            ['green', 'empty', 'empty', 'empty'],
+            ['green', 'empty', 'empty', 'empty']
+          ],
+          target: 'fighter',
+          buffType: 'atk',
+          value: 20,
+          createdAt: Date.now() - 2000
+        },
+        {
+          id: "def_recipe_7",
+          name: "[Rider] ATK 20.0% (縦)",
+          grid: [
+            ['blue', 'empty', 'empty', 'empty'],
+            ['blue', 'empty', 'empty', 'empty'],
+            ['blue', 'empty', 'empty', 'empty'],
+            ['blue', 'empty', 'empty', 'empty']
+          ],
+          target: 'rider',
+          buffType: 'atk',
+          value: 20,
+          createdAt: Date.now() - 1000
+        }
+      ];
+
+      const DEFAULT_LAYOUTS = [
+        {
+          id: 'layout-1',
+          name: 'サンプル配置 A',
+          grid: [
+            ['red', 'empty', 'empty', 'red', 'blue', 'blue', 'blue'],
+            ['empty', 'red', 'red', 'empty', 'empty', 'empty', 'empty'],
+            ['empty', 'red', 'red', 'empty', 'empty', 'empty', 'empty'],
+            ['red', 'empty', 'empty', 'red', 'empty', 'empty', 'empty'],
+            ['empty', 'empty', 'empty', 'empty', 'empty', 'empty', 'empty'],
+          ],
+          createdAt: Date.now(),
+        },
+      ];
+
+      // Empty matrix initiations
+      function createEmptyGrid(r, c) {
+        return Array.from({ length: r }, () => Array(c).fill('empty'));
+      }
+
+      // Counts active chess pieces count inside recipe 4x4 grid
+      function getRecipeChessCount(grid) {
+        let count = 0;
+        for (let r = 0; r < 4; r++) {
+          for (let c = 0; c < 4; c++) {
+            if (grid[r][c] !== 'empty') {
+              count++;
+            }
+          }
+        }
+        return count;
+      }
+
+      // Calculations rules: 4 pieces -> 5000pt, 3 pieces -> 2000pt, others fallback
+      function getRecipeScore(recipe) {
+        const count = getRecipeChessCount(recipe.grid);
+        if (count === 4) return 5000;
+        if (count === 3) return 2000;
+        if (count === 2) return 1000;
+        if (count === 1) return 500;
+        if (count > 4) return 5000 + (count - 4) * 1000;
+        return 0;
+      }
+
+      // Count color frequency details inside layout or recipe
+      function countChessColors(grid) {
+        const counts = { red: 0, blue: 0, green: 0, yellow: 0, purple: 0 };
+        for (let r = 0; r < grid.length; r++) {
+          for (let c = 0; c < grid[r].length; c++) {
+            const col = grid[r][c];
+            if (col !== 'empty') {
+              counts[col] = (counts[col] || 0) + 1;
+            }
+          }
+        }
+        return counts;
+      }
+
+      function countRecipeChessColors(grid) {
+        return countChessColors(grid);
+      }
+
+      // Base64 converters for GitHub file contents
+      function utf8ToBase64(str) {
+        return btoa(unescape(encodeURIComponent(str)));
+      }
+
+      function base64ToUtf8(str) {
+        return decodeURIComponent(escape(atob(str)));
+      }
+
+      // Normalizers when syncing from dynamic backups
+      function normalizeRecipes(rawRecipes) {
+        if (!Array.isArray(rawRecipes)) return [];
+        const COLOR_MAP = {
+          0: 'empty', 1: 'red', 2: 'blue', 3: 'green', 4: 'yellow', 5: 'purple',
+          'empty': 'empty', 'red': 'red', 'blue': 'blue', 'green': 'green', 'yellow': 'yellow', 'purple': 'purple'
+        };
+        const TARGET_MAP = {
+          'fighter': 'fighter', 'rider': 'rider', 'shooter': 'shooter', 'army': 'army',
+          'Troop': 'army', 'Fighter': 'fighter', 'Rider': 'rider', 'Shooter': 'shooter'
+        };
+        const TYPE_MAP = {
+          'atk': 'atk', 'def': 'def', 'hp': 'hp',
+          'ATK': 'atk', 'DEF': 'def', 'HP': 'hp'
+        };
+
+        return rawRecipes.map((item, idx) => {
+          const id = item.id || `custom_${Date.now()}_${idx}`;
+          let grid = createEmptyGrid(4, 4);
+          if (Array.isArray(item.grid)) {
+            for (let r = 0; r < 4; r++) {
+              if (Array.isArray(item.grid[r])) {
+                for (let c = 0; c < 4; c++) {
+                  const val = item.grid[r][c];
+                  grid[r][c] = COLOR_MAP[val] || 'empty';
+                }
+              }
+            }
+          }
+
+          let target = 'army';
+          if (item.target && TARGET_MAP[item.target]) {
+            target = TARGET_MAP[item.target];
+          } else if (item.effect && item.effect.target && TARGET_MAP[item.effect.target]) {
+            target = TARGET_MAP[item.effect.target];
+          }
+
+          let buffType = 'hp';
+          if (item.buffType && TYPE_MAP[item.buffType]) {
+            buffType = TYPE_MAP[item.buffType];
+          } else if (item.effect && item.effect.type && TYPE_MAP[item.effect.type]) {
+            buffType = TYPE_MAP[item.effect.type];
+          } else if (item.effect && item.effect.buffType && TYPE_MAP[item.effect.buffType]) {
+            buffType = TYPE_MAP[item.effect.buffType];
+          }
+
+          let value = 0;
+          if (typeof item.value === 'number') {
+            value = item.value;
+          } else if (item.effect && typeof item.effect.value === 'number') {
+            value = item.effect.value;
+          }
+
+          return {
+            id,
+            name: item.name || `レシピ ${idx + 1}`,
+            grid,
+            target,
+            buffType,
+            value,
+            createdAt: item.createdAt || (Date.now() - idx * 1000)
+          };
+        });
+      }
+
+      function normalizeGithubData(rawData) {
+        const result = {
+          recipes: [],
+          layouts: [],
+          pin: '1234',
+          githubConfig: { owner: '', repo: '', path: '', token: '' }
+        };
+
+        if (!rawData) {
+          result.recipes = DEFAULT_RECIPES;
+          result.layouts = DEFAULT_LAYOUTS;
+          return result;
+        }
+
+        if (Array.isArray(rawData)) {
+          result.recipes = normalizeRecipes(rawData);
+          result.layouts = DEFAULT_LAYOUTS;
+        } else {
+          if (rawData.recipes) {
+            result.recipes = normalizeRecipes(rawData.recipes);
+          } else if (rawData.grid) {
+            result.recipes = normalizeRecipes([rawData]);
+          } else {
+            result.recipes = DEFAULT_RECIPES;
+          }
+
+          if (rawData.layouts && Array.isArray(rawData.layouts)) {
+            result.layouts = rawData.layouts;
+          } else {
+            result.layouts = DEFAULT_LAYOUTS;
+          }
+
+          if (rawData.pin) {
+            result.pin = String(rawData.pin);
+          }
+          if (rawData.githubConfig) {
+            result.githubConfig = rawData.githubConfig;
+          }
+        }
+        return result;
+      }
+
+      // Translation-Independent Pattern Match Core Algorithm (deduplicated per layout)
+      function findMatches(layoutGrid, recipes, strictEmpty = false) {
+        const matches = [];
+        const matchedRecipeIds = new Set();
+
+        for (const recipe of recipes) {
+          if (matchedRecipeIds.has(recipe.id)) {
+            continue;
+          }
+
+          // Gather non-empty cells
+          const activeCells = [];
+          for (let i = 0; i < 4; i++) {
+            for (let j = 0; j < 4; j++) {
+              if (recipe.grid[i][j] !== 'empty') {
+                activeCells.push({ r: i, c: j, color: recipe.grid[i][j] });
+              }
+            }
+          }
+
+          if (activeCells.length === 0) {
+            continue;
+          }
+
+          const baseCell = activeCells[0];
+          let foundMatch = false;
+          let matchedPos = { row: 0, col: 0 };
+
+          // Translate patterns testing all 5x7 cells
+          for (let r = 0; r < 5; r++) {
+            for (let c = 0; c < 7; c++) {
+              const dr = r - baseCell.r;
+              const dc = c - baseCell.c;
+
+              let isMatch = true;
+              for (const cell of activeCells) {
+                const targetR = cell.r + dr;
+                const targetC = cell.c + dc;
+
+                if (targetR < 0 || targetR >= 5 || targetC < 0 || targetC >= 7) {
+                  isMatch = false;
+                  break;
+                }
+
+                if (layoutGrid[targetR][targetC] !== cell.color) {
+                  isMatch = false;
+                  break;
+                }
+              }
+
+              // Strict empty enforcement within bounding 4x4 layout of recipe
+              if (isMatch && strictEmpty) {
+                if (dr < 0 || dr + 3 >= 5 || dc < 0 || dc + 3 >= 7) {
+                  isMatch = false;
+                } else {
+                  for (let i = 0; i < 4; i++) {
+                    for (let j = 0; j < 4; j++) {
+                      if (recipe.grid[i][j] === 'empty') {
+                        const targetR = i + dr;
+                        const targetC = j + dc;
+                        if (layoutGrid[targetR][targetC] !== 'empty') {
+                          isMatch = false;
+                          break;
+                        }
+                      }
+                    }
+                    if (!isMatch) break;
+                  }
+                }
+              }
+
+              if (isMatch) {
+                foundMatch = true;
+                matchedPos = { row: dr, col: dc };
+                break;
+              }
+            }
+            if (foundMatch) break;
+          }
+
+          if (foundMatch) {
+            matches.push({
+              recipe,
+              row: matchedPos.row,
+              col: matchedPos.col,
+            });
+            matchedRecipeIds.add(recipe.id);
+          }
+        }
+
+        return matches;
+      }
+
+      // Load files metadata from GitHub API (read operation)
+      async function loadDataFromGithub(owner, repo, filePath, token) {
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
+        const headers = {
+          'Accept': 'application/vnd.github.v3+json',
+        };
+        if (token) {
+          headers['Authorization'] = `token ${token}`;
+        }
+        const response = await fetch(url, { headers });
+        if (!response.ok) {
+          throw new Error(`Status ${response.status} - ${response.statusText}`);
+        }
+        const json = await response.json();
+        const rawContent = base64ToUtf8(json.content);
+        let parsed = null;
+        try {
+          parsed = JSON.parse(rawContent);
+        } catch (err) {
+          console.error('Failed to parse loaded JSON content:', err);
+        }
+        const data = normalizeGithubData(parsed);
+        return {
+          data,
+          sha: json.sha
+        };
+      }
+
+      // Save files metadata to GitHub API (write operation)
+      async function saveDataToGithub(owner, repo, filePath, token, data, sha) {
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
+        
+        let currentSha = sha;
+        try {
+          const checkHeaders = { 'Accept': 'application/vnd.github.v3+json' };
+          if (token) checkHeaders['Authorization'] = `token ${token}`;
+          const checkResponse = await fetch(url, { headers: checkHeaders });
+          if (checkResponse.ok) {
+            const checkJson = await checkResponse.json();
+            currentSha = checkJson.sha;
+          }
+        } catch (err) {
+          console.warn('Could not fetch latest SHA on backup check', err);
+        }
+
+        const cleanData = {
+          ...data,
+          githubConfig: data.githubConfig ? {
+            ...data.githubConfig,
+            token: '' // Omit private active PAT to bypass Github Secret Protection scanner rules
+          } : undefined
+        };
+
+        const contentBase64 = utf8ToBase64(JSON.stringify(cleanData, null, 2));
+        const body = {
+          message: 'Update Chess Recipes and Layouts (via Stanford GitHub Backup)',
+          content: contentBase64,
+          sha: currentSha || undefined
+        };
+
+        const headers = {
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+          'Authorization': `token ${token}`
+        };
+
+        const response = await fetch(url, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(body)
+        });
+
+        if (!response.ok) {
+          const errBody = await response.text();
+          throw new Error(`Status ${response.status} - ${errBody}`);
+        }
+
+        const responseJson = await response.json();
+        return responseJson.content.sha;
+      }
+
+
+      /* ========================================= */
+      /* ========= MINI REACT COMPONENTS ========= */
+      /* ========================================= */
+
+      const ChessGrid = ({ grid, onCellClick, readOnly = false, highlightedCells, activeColor }) => {
+        const rows = grid.length;
+        const cols = grid[0]?.length || 0;
+
+        const getColorChar = (color) => {
+          switch (color) {
+            case 'red': return '赤';
+            case 'blue': return '青';
+            case 'green': return '緑';
+            case 'yellow': return '黄';
+            case 'purple': return '紫';
+            default: return '';
+          }
+        };
+
+        return (
+          <div 
+            className="inline-block bg-zinc-50/90 p-4 rounded-2xl shadow-sm border border-zinc-200/80 select-none w-full"
+            style={{ maxWidth: cols === 7 ? '500px' : '300px' }}
+          >
+            <div 
+              className="grid gap-2"
+              style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+            >
+              {grid.map((rowArr, r) =>
+                rowArr.map((cellColor, c) => {
+                  const isHighlighted = highlightedCells?.has(`${r},${c}`);
+                  const isColor = cellColor !== 'empty';
+                  const styleDetails = isColor ? CHESS_COLOR_TAILWIND[cellColor] : null;
+
+                  return (
+                    <button
+                      key={`${r}-${c}`}
+                      type="button"
+                      disabled={readOnly && !onCellClick}
+                      onClick={() => onCellClick?.(r, c)}
+                      className={`
+                        aspect-square rounded-xl flex flex-col items-center justify-center font-bold text-xs sm:text-sm border-2 transition-all duration-200 relative group
+                        ${readOnly && !onCellClick ? 'cursor-default' : 'cursor-pointer active:scale-95 hover:scale-[1.04]'}
+                        ${isColor 
+                          ? `${styleDetails?.bg} ${styleDetails?.text} ${styleDetails?.border} shadow-sm` 
+                          : 'bg-white border-zinc-200/70 hover:bg-zinc-50 hover:border-zinc-350 text-zinc-300'
+                        }
+                        ${isHighlighted 
+                          ? 'ring-4 ring-indigo-500/30 ring-offset-2 relative z-10 scale-[1.06] border-indigo-600 shadow-md shadow-indigo-500/20' 
+                          : 'border-zinc-200/70'
+                        }
+                      `}
+                      style={styleDetails ? { color: styleDetails.fontColor } : {}}
+                      title={`${r + 1}行目, ${c + 1}列目: ${cellColor === 'empty' ? '空き' : styleDetails?.label}`}
+                    >
+                      {isColor ? (
+                        <span class="drop-shadow-sm font-sans tracking-wide font-semibold">
+                          {getColorChar(cellColor)}
+                        </span>
+                      ) : (
+                        <span className="text-[9px] text-zinc-400 font-mono font-normal">
+                          {r},{c}
+                        </span>
+                      )}
+                      {!readOnly && activeColor && (
+                        <span className="absolute inset-0 rounded-xl bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+            <div className="mt-3 flex justify-between items-center text-[10px] text-zinc-400 font-mono font-medium px-1">
+              <span>ヨコ {cols}マス</span>
+              <span>タテ {rows}マス</span>
+            </div>
+          </div>
+        );
+      };
+
+
+      const GitHubConfigPanel = ({ config, onSaveConfig, onPull, onPush, statusMsg, loading }) => {
+        const [owner, setOwner] = useState(config.owner || '');
+        const [repo, setRepo] = useState(config.repo || '');
+        const [path, setPath] = useState(config.path || 'recipes.json');
+        const [token, setToken] = useState(config.token || '');
+        const [showToken, setShowToken] = useState(false);
+        const [saved, setSaved] = useState(false);
+
+        const handleSubmit = (e) => {
+          e.preventDefault();
+          onSaveConfig({ owner, repo, path, token });
+          setSaved(true);
+          setTimeout(() => setSaved(false), 2000);
+        };
+
+        const isConfigured = owner && repo && path && token;
+
+        return (
+          <div className="bg-white p-6 rounded-2xl border border-zinc-200/85 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2 bg-indigo-50 rounded-xl text-indigo-600">
+                {/* SVG Settings icon */}
+                <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <h3 className="text-sm font-semibold text-zinc-800 font-sans tracking-tight">GitHub 同期設定</h3>
+            </div>
+
+            <p className="text-xs text-zinc-500 mb-5 leading-relaxed">
+              GitHubのパブリック/プライベートリポジトリと双方向同期し、レシピデータをクラウド上に保存・管理できます。
+              未設定、またはトークンを空にした場合は、自動的にブラウザの<strong className="text-zinc-750 font-bold">ローカルストレージ</strong>に保存されます。
+            </p>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-500 mb-1.5">
+                    GitHub オーナー名 <span className="text-rose-500 font-normal">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={owner}
+                    onChange={(e) => setOwner(e.target.value)}
+                    placeholder="e.g. github-username"
+                    className="w-full text-xs font-mono bg-zinc-50 border border-zinc-200 text-zinc-800 rounded-lg px-3.5 py-2.5 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-medium placeholder-zinc-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-500 mb-1.5">
+                    リポジトリ名 <span className="text-rose-500 font-normal">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={repo}
+                    onChange={(e) => setRepo(e.target.value)}
+                    placeholder="e.g. chess-recipe-repo"
+                    className="w-full text-xs font-mono bg-zinc-50 border border-zinc-200 text-zinc-800 rounded-lg px-3.5 py-2.5 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-medium placeholder-zinc-400"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-500 mb-1.5">
+                    保存先ファイル名 / パス
+                  </label>
+                  <input
+                    type="text"
+                    value={path}
+                    onChange={(e) => setPath(e.target.value)}
+                    placeholder="recipes.json"
+                    className="w-full text-xs font-mono bg-zinc-50 border border-zinc-200 text-zinc-800 rounded-lg px-3.5 py-2.5 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-medium placeholder-zinc-400"
+                  />
+                  <span className="text-[10px] text-zinc-400 mt-1 block">※拡張子は.jsonを指定してください。</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-500 mb-1.5">
+                    GitHub 個人アクセストークン (PAT) <span className="text-rose-500 font-normal">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showToken ? 'text' : 'password'}
+                      value={token}
+                      onChange={(e) => setToken(e.target.value)}
+                      placeholder="ghp_xxxxxxxxxxxx"
+                      className="w-full text-xs font-mono bg-zinc-50 border border-zinc-200 text-zinc-800 rounded-lg pl-3.5 pr-10 py-2.5 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-medium placeholder-zinc-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowToken(!showToken)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 p-1 cursor-pointer transition-colors"
+                      title={showToken ? 'トークンを非表示' : 'トークンを表示'}
+                    >
+                      {showToken ? (
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                        </svg>
+                      ) : (
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <button
+                  type="submit"
+                  className={`px-4 py-2.5 rounded-lg text-xs font-bold transition-all duration-150 cursor-pointer flex items-center justify-center gap-1.5 sm:w-1/3
+                    ${saved 
+                      ? 'bg-emerald-600 text-white shadow-xs' 
+                      : 'bg-zinc-800 hover:bg-zinc-900 text-white shadow-xs active:scale-95'
+                    }
+                  `}
+                >
+                  {saved ? '✓ 保存完了' : '設定を保存する'}
+                </button>
+
+                {isConfigured && (
+                  <div className="flex gap-2 flex-1">
+                    <button
+                      type="button"
+                      onClick={onPull}
+                      disabled={loading}
+                      className="flex-1 px-3 py-2.5 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 active:scale-95 disabled:opacity-40 select-none text-xs font-bold rounded-lg cursor-pointer flex items-center justify-center gap-1.5 transition-all"
+                    >
+                      <svg className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 15H19" />
+                      </svg>
+                      GitHubから読み込み
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={onPush}
+                      disabled={loading}
+                      className="flex-1 px-3 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 disabled:opacity-40 select-none text-white text-xs font-bold rounded-lg cursor-pointer flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                    >
+                      <svg className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      </svg>
+                      GitHubへ保存 (書き込み)
+                    </button>
+                  </div>
+                )}
+              </div>
+            </form>
+
+            {statusMsg && (
+              <div 
+                className={`mt-4 p-3.5 rounded-xl border flex items-start gap-2.5 ${
+                  statusMsg.isError 
+                    ? 'bg-rose-50 text-rose-700 border-rose-250' 
+                    : 'bg-emerald-50 text-emerald-700 border-emerald-250'
+                }`}
+              >
+                <div className="mt-0.5 shrink-0">
+                  {statusMsg.isError ? (
+                    <svg className="w-4 h-4 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  )}
+                </div>
+                <span className="text-[11px] font-medium font-mono leading-tight whitespace-pre-wrap">{statusMsg.text}</span>
+              </div>
+            )}
+          </div>
+        );
+      };
+
+
+      /* ========================================= */
+      /* ============ APP ENTRY POINT ============ */
+      /* ========================================= */
+
+      const LOCAL_STORAGE_KEY = 'chess_recipe_system_standalone_data';
+
+      function App() {
+        // Core states
+        const [recipes, setRecipes] = useState(DEFAULT_RECIPES);
+        const [layouts, setLayouts] = useState(DEFAULT_LAYOUTS);
+        const [selectedLayoutId, setSelectedLayoutId] = useState('layout-1');
+        const [strictEmptyMatching, setStrictEmptyMatching] = useState(false);
+
+        // Security / management mode states
+        const [pin, setPin] = useState('1234');
+        const [isManagementMode, setIsManagementMode] = useState(false);
+        const [pinInput, setPinInput] = useState('');
+        const [pinError, setPinError] = useState(null);
+
+        // Editing target objects states
+        const [editingRecipe, setEditingRecipe] = useState(null);
+        const [editingLayout, setEditingLayout] = useState(null);
+        const [activePaletteColor, setActivePaletteColor] = useState('red');
+
+        // Layout interaction hover coordination states
+        const [highlightedCells, setHighlightedCells] = useState(new Set());
+
+        // GitHub backup states
+        const [githubConfig, setGithubConfig] = useState({ owner: '', repo: '', path: 'recipes.json', token: '' });
+        const [currentSha, setCurrentSha] = useState('');
+        const [syncStatus, setSyncStatus] = useState(null);
+        const [syncLoading, setSyncLoading] = useState(false);
+
+        // PIN update form fields states
+        const [newPin, setNewPin] = useState('');
+        const [pinChangeSuccess, setPinChangeSuccess] = useState(false);
+
+        // Trigger manual local storage loads
+        useEffect(() => {
+          const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+          if (saved) {
+            try {
+              const parsed = JSON.parse(saved);
+              const normalized = normalizeGithubData(parsed);
+              setRecipes(normalized.recipes || DEFAULT_RECIPES);
+              setLayouts(normalized.layouts || DEFAULT_LAYOUTS);
+              setPin(normalized.pin || '1234');
+              if (normalized.githubConfig) {
+                setGithubConfig(normalized.githubConfig);
+              }
+              if (normalized.layouts && normalized.layouts.length > 0) {
+                setSelectedLayoutId(normalized.layouts[0].id);
+              }
+            } catch (err) {
+              console.error('Failed to parse localStorage data', err);
+            }
+          }
+        }, []);
+
+        // Save to local storage on modification
+        const saveStateLocally = (updatedRecipes, updatedLayouts, updatedPin, updatedGithub) => {
+          const schema = {
+            recipes: updatedRecipes,
+            layouts: updatedLayouts,
+            pin: updatedPin,
+            githubConfig: updatedGithub
+          };
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(schema));
+        };
+
+        // GitHub Backups integration
+        const handleGithubPull = async () => {
+          if (!githubConfig.owner || !githubConfig.repo || !githubConfig.token) {
+            setSyncStatus({ text: 'エラー: GitHub設定が未完了です。設定を先に入力保存してください。', isError: true });
+            return;
+          }
+          setSyncLoading(true);
+          setSyncStatus({ text: 'GitHubから最新データを受信中...', isError: false });
+
+          try {
+            const { data, sha } = await loadDataFromGithub(
+              githubConfig.owner,
+              githubConfig.repo,
+              githubConfig.path || 'recipes.json',
+              githubConfig.token
+            );
+
+            // Re-inflate states
+            setRecipes(data.recipes || []);
+            setLayouts(data.layouts || []);
+            setPin(data.pin || '1234');
+            setCurrentSha(sha);
+
+            if (data.layouts && data.layouts.length > 0) {
+              setSelectedLayoutId(data.layouts[0].id);
+            }
+
+            saveStateLocally(data.recipes, data.layouts, data.pin, githubConfig);
+            setSyncStatus({ 
+              text: `同期成功! GitHubからデータを読み込みました。\nレシピ数: ${data.recipes?.length || 0}、レイアウト数: ${data.layouts?.length || 0}`, 
+              isError: false 
+            });
+          } catch (err) {
+            setSyncStatus({ text: `読み込みエラー: ${err.message}`, isError: true });
+          } finally {
+            setSyncLoading(false);
+          }
+        };
+
+        const handleGithubPush = async () => {
+          if (!githubConfig.owner || !githubConfig.repo || !githubConfig.token) {
+            setSyncStatus({ text: 'エラー: GitHub設定が未完了です。設定を入力保存してください。', isError: true });
+            return;
+          }
+          setSyncLoading(true);
+          setSyncStatus({ text: 'GitHubにデータ保存中...', isError: false });
+
+          const currentData = {
+            recipes,
+            layouts,
+            githubConfig,
+            pin,
+          };
+
+          try {
+            const newSha = await saveDataToGithub(
+              githubConfig.owner,
+              githubConfig.repo,
+              githubConfig.path || 'recipes.json',
+              githubConfig.token,
+              currentData,
+              currentSha
+            );
+            setCurrentSha(newSha);
+            setSyncStatus({ text: '同期成功! データをGitHubリポジトリに保存しました（PATは除外されて安全にバックアップに格納されています）。', isError: false });
+          } catch (err) {
+            setSyncStatus({ text: `保存エラー: ${err.message}\n※競合かトークン無効の可能性があります。再読込してください。`, isError: true });
+          } finally {
+            setSyncLoading(false);
+          }
+        };
+
+        // PIN Form Submits
+        const handleLogin = (e) => {
+          e.preventDefault();
+          if (pinInput === pin) {
+            setIsManagementMode(true);
+            setPinError(null);
+            setPinInput('');
+          } else {
+            setPinError('PINコードが違います。');
+          }
+        };
+
+        const handleLogout = () => {
+          setIsManagementMode(false);
+          setEditingRecipe(null);
+          setEditingLayout(null);
+          setHighlightedCells(new Set());
+        };
+
+        const handlePinChangeSubmit = (e) => {
+          e.preventDefault();
+          if (newPin.trim().length < 4) {
+            alert('PINコードは4桁以上にしてください。');
+            return;
+          }
+          setPin(newPin);
+          saveStateLocally(recipes, layouts, newPin, githubConfig);
+          setNewPin('');
+          setPinChangeSuccess(true);
+          setTimeout(() => setPinChangeSuccess(false), 2500);
+        };
+
+        // Layout helpers
+        const activeLayout = useMemo(() => layouts.find(l => l.id === selectedLayoutId), [layouts, selectedLayoutId]);
+
+        // Pattern matching solver results
+        const activeMatches = useMemo(() => {
+          return activeLayout ? findMatches(activeLayout.grid, recipes, strictEmptyMatching) : [];
+        }, [activeLayout, recipes, strictEmptyMatching]);
+
+        const editingLayoutMatches = useMemo(() => {
+          return editingLayout ? findMatches(editingLayout.grid, recipes, strictEmptyMatching) : [];
+        }, [editingLayout, recipes, strictEmptyMatching]);
+
+        // Points summaries calculations
+        const activeTotalScore = useMemo(() => {
+          return activeMatches.reduce((sum, m) => sum + getRecipeScore(m.recipe), 0);
+        }, [activeMatches]);
+
+        const editingTotalScore = useMemo(() => {
+          return editingLayoutMatches.reduce((sum, m) => sum + getRecipeScore(m.recipe), 0);
+        }, [editingLayoutMatches]);
+
+        const activeChessCounts = useMemo(() => {
+          return activeLayout ? countChessColors(activeLayout.grid) : null;
+        }, [activeLayout]);
+
+        const editingChessCounts = useMemo(() => {
+          return editingLayout ? countChessColors(editingLayout.grid) : null;
+        }, [editingLayout]);
+
+        // Sorting helpers
+        const TARGET_ORDER_PRIORITY = { fighter: 1, rider: 2, shooter: 3, army: 4 };
+        const BUFF_TYPE_ORDER_PRIORITY = { atk: 1, def: 2, hp: 3 };
+
+        const sortedActiveMatches = useMemo(() => {
+          return [...activeMatches].sort((a, b) => {
+            const tA = TARGET_ORDER_PRIORITY[a.recipe.target] || 99;
+            const tB = TARGET_ORDER_PRIORITY[b.recipe.target] || 99;
+            if (tA !== tB) return tA - tB;
+            const tyA = BUFF_TYPE_ORDER_PRIORITY[a.recipe.buffType] || 99;
+            const tyB = BUFF_TYPE_ORDER_PRIORITY[b.recipe.buffType] || 99;
+            if (tyA !== tyB) return tyA - tyB;
+            return b.recipe.value - a.recipe.value;
+          });
+        }, [activeMatches]);
+
+        const sortedEditingMatches = useMemo(() => {
+          return [...editingLayoutMatches].sort((a, b) => {
+            const tA = TARGET_ORDER_PRIORITY[a.recipe.target] || 99;
+            const tB = TARGET_ORDER_PRIORITY[b.recipe.target] || 99;
+            if (tA !== tB) return tA - tB;
+            const tyA = BUFF_TYPE_ORDER_PRIORITY[a.recipe.buffType] || 99;
+            const tyB = BUFF_TYPE_ORDER_PRIORITY[b.recipe.buffType] || 99;
+            if (tyA !== tyB) return tyA - tyB;
+            return b.recipe.value - a.recipe.value;
+          });
+        }, [editingLayoutMatches]);
+
+        // Coordinate triggers on cell highlight hovers
+        const handleMouseEnterMatch = (match) => {
+          const coords = new Set();
+          for (let i = 0; i < 4; i++) {
+            for (let j = 0; j < 4; j++) {
+              if (match.recipe.grid[i][j] !== 'empty') {
+                const tr = match.row + i;
+                const tc = match.col + j;
+                if (tr >= 0 && tr < 5 && tc >= 0 && tc < 7) {
+                  coords.add(`${tr},${tc}`);
+                }
+              }
+            }
+          }
+          setHighlightedCells(coords);
+        };
+
+        const handleMouseLeaveMatch = () => {
+          setHighlightedCells(new Set());
+        };
+
+        // Layout design interactions
+        const handleLayoutCellClick = (r, c) => {
+          if (!isManagementMode) return;
+          if (editingLayout) {
+            const nextGrid = editingLayout.grid.map(row => [...row]);
+            const prevColor = nextGrid[r][c];
+            // Cycle toggle or paint active selected color palette
+            nextGrid[r][c] = (prevColor === activePaletteColor) ? 'empty' : activePaletteColor;
+            setEditingLayout({ ...editingLayout, grid: nextGrid });
+          } else {
+            // Modify active layout instantly if no edit subgrid open
+            const layoutToMod = layouts.find(l => l.id === selectedLayoutId);
+            if (!layoutToMod) return;
+            const nextGrid = layoutToMod.grid.map(row => [...row]);
+            const prevColor = nextGrid[r][c];
+            nextGrid[r][c] = (prevColor === activePaletteColor) ? 'empty' : activePaletteColor;
+            
+            const updated = layouts.map(l => l.id === selectedLayoutId ? { ...l, grid: nextGrid } : l);
+            setLayouts(updated);
+            saveStateLocally(recipes, updated, pin, githubConfig);
+          }
+        };
+
+        const handleRecipeCellClick = (r, c) => {
+          if (!editingRecipe) return;
+          const nextGrid = editingRecipe.grid.map(row => [...row]);
+          const prevColor = nextGrid[r][c];
+          nextGrid[r][c] = (prevColor === activePaletteColor) ? 'empty' : activePaletteColor;
+          setEditingRecipe({ ...editingRecipe, grid: nextGrid });
+        };
+
+        // Recipe management
+        const startCreateRecipe = () => {
+          setEditingRecipe({
+            id: `recipe_${Date.now()}`,
+            name: '',
+            grid: createEmptyGrid(4, 4),
+            target: 'army',
+            buffType: 'hp',
+            value: 10,
+            createdAt: Date.now()
+          });
+        };
+
+        const handleSaveRecipe = (e) => {
+          e.preventDefault();
+          if (!editingRecipe.name.trim()) {
+            alert('レシピ名を入力してください。');
+            return;
+          }
+          
+          let nextRecipes;
+          const exist = recipes.some(r => r.id === editingRecipe.id);
+          if (exist) {
+            nextRecipes = recipes.map(r => r.id === editingRecipe.id ? editingRecipe : r);
+          } else {
+            nextRecipes = [editingRecipe, ...recipes];
+          }
+
+          setRecipes(nextRecipes);
+          saveStateLocally(nextRecipes, layouts, pin, githubConfig);
+          setEditingRecipe(null);
+        };
+
+        const handleDeleteRecipe = (id) => {
+          if (!confirm('本当にこのレシピを削除しますか？')) return;
+          const updated = recipes.filter(r => r.id !== id);
+          setRecipes(updated);
+          saveStateLocally(updated, layouts, pin, githubConfig);
+        };
+
+        // Layout management
+        const startCreateLayout = () => {
+          setEditingLayout({
+            id: `layout_${Date.now()}`,
+            name: `新しい盤面配置 ${layouts.length + 1}`,
+            grid: createEmptyGrid(5, 7),
+            createdAt: Date.now()
+          });
+        };
+
+        const handleSaveLayout = (e) => {
+          e.preventDefault();
+          if (!editingLayout.name.trim()) {
+            alert('配置名を入力してください。');
+            return;
+          }
+
+          let nextLayouts;
+          const exist = layouts.some(l => l.id === editingLayout.id);
+          if (exist) {
+            nextLayouts = layouts.map(l => l.id === editingLayout.id ? editingLayout : l);
+          } else {
+            nextLayouts = [...layouts, editingLayout];
+          }
+
+          setLayouts(nextLayouts);
+          saveStateLocally(recipes, nextLayouts, pin, githubConfig);
+          setSelectedLayoutId(editingLayout.id);
+          setEditingLayout(null);
+        };
+
+        const handleDeleteLayout = (id) => {
+          if (layouts.length <= 1) {
+            alert('最後の一つのレイアウトは削除できません。');
+            return;
+          }
+          if (!confirm('この盤面配置を削除しますか？')) return;
+          const updated = layouts.filter(l => l.id !== id);
+          setLayouts(updated);
+          saveStateLocally(recipes, updated, pin, githubConfig);
+          setSelectedLayoutId(updated[0].id);
+        };
+
+        const handleGithubConfigSave = (newConfig) => {
+          setGithubConfig(newConfig);
+          saveStateLocally(recipes, layouts, pin, newConfig);
+        };
+
+        return (
+          <div className="w-full">
+            {/* Elegant top bar header */}
+            <header className="bg-zinc-850 text-white py-5 px-6 shadow-md border-b border-zinc-800">
+              <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-indigo-600 rounded-xl shadow-inner flex items-center justify-center">
+                    <svg className="w-5 h-5 text-indigo-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h1 className="text-lg font-bold font-sans tracking-tight">チェスレシピ＆フルレイアウト解析ツール</h1>
+                    <p className="text-[10px] text-zinc-400 font-medium">Standalone Portable Web Edition</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {isManagementMode ? (
+                    <div className="flex items-center gap-2.5 bg-zinc-800/80 px-3.5 py-1.5 rounded-xl border border-zinc-700 shadow-3xs">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <span className="text-xs font-semibold text-emerald-400 font-sans">管理者モード</span>
+                      <button
+                        onClick={handleLogout}
+                        className="text-[10px] bg-zinc-700 hover:bg-rose-900 hover:text-white px-2.5 py-1 rounded-md transition-all font-bold tracking-wide"
+                      >
+                        ログアウト
+                      </button>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleLogin} className="flex items-center gap-2">
+                      <input
+                        type="password"
+                        placeholder="PINコード (デフォルト 1234)"
+                        value={pinInput}
+                        onChange={(e) => setPinInput(e.target.value)}
+                        className="bg-zinc-850 hover:bg-zinc-800 border border-zinc-750 text-xs px-3.5 py-2.5 rounded-xl text-white font-mono placeholder-zinc-500 focus:outline-none focus:border-indigo-500 font-semibold focus:ring-1 focus:ring-indigo-500"
+                      />
+                      <button
+                        type="submit"
+                        className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-xs text-white font-bold px-4 py-2.5 rounded-xl transition-all cursor-pointer shadow-xs"
+                      >
+                        編集モード起動
+                      </button>
+                    </form>
+                  )}
+                </div>
+              </div>
+            </header>
+
+            {/* Error notifications */}
+            {pinError && (
+              <div className="bg-rose-50 border-b border-rose-200 text-rose-700 py-3 px-6 text-xs font-semibold font-sans text-center">
+                ⚠ {pinError} 入退室キー、または管理PINコードが間違っています。
+              </div>
+            )}
+
+            {/* Main Workspace Body */}
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+
+                {/* LEFT: Layout canvas, highlights & matching scores */}
+                <div className="md:col-span-6 space-y-6">
+                  
+                  {/* Select active target layout */}
+                  <div className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest block font-sans">
+                        アクティブ盤面設計
+                      </label>
+                      <select
+                        value={selectedLayoutId}
+                        onChange={(e) => {
+                          setSelectedLayoutId(e.target.value);
+                          setEditingLayout(null);
+                        }}
+                        disabled={!!editingLayout}
+                        className="text-sm font-semibold text-zinc-800 bg-zinc-50 hover:bg-zinc-100/70 border border-zinc-200 px-3.5 py-2 rounded-xl focus:outline-none transition-colors"
+                      >
+                        {layouts.map(l => (
+                          <option key={l.id} value={l.id}>{l.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex gap-2 self-end sm:self-auto">
+                      <button
+                        onClick={() => setStrictEmptyMatching(!strictEmptyMatching)}
+                        className={`text-xs font-bold px-3 py-2 rounded-xl border select-none transition-all cursor-pointer flex items-center gap-1.5
+                          ${strictEmptyMatching 
+                            ? 'bg-rose-50 text-rose-700 border-rose-200' 
+                            : 'bg-zinc-50 text-zinc-650 border-zinc-200 hover:bg-zinc-100/50'
+                          }
+                        `}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${strictEmptyMatching ? 'bg-rose-500 animate-pulse' : 'bg-zinc-400'}`}></span>
+                        厳密マッチング {strictEmptyMatching ? 'ON' : 'OFF'}
+                      </button>
+
+                      {isManagementMode && !editingLayout && (
+                        <>
+                          <button
+                            onClick={() => setEditingLayout({ ...activeLayout })}
+                            className="bg-zinc-100 hover:bg-zinc-200 text-zinc-700 border border-zinc-200 text-xs font-bold px-3.5 py-2 rounded-xl transition-colors cursor-pointer"
+                          >
+                            配置名/構造を編集
+                          </button>
+                          <button
+                            onClick={startCreateLayout}
+                            className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold px-3 py-2 rounded-xl transition-colors cursor-pointer"
+                          >
+                            ＋ 新規配置
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Chess placement editor or static grid view */}
+                  <div className="bg-white p-6 rounded-3xl border border-zinc-200/90 shadow-sm relative overflow-hidden">
+                    {editingLayout && (
+                      <div className="absolute top-0 left-0 right-0 py-2 bg-indigo-500 text-white text-[11px] font-bold text-center z-10 shadow-sm flex justify-center items-center gap-2">
+                        <span>● 現在レイアウト編集モード</span>
+                        <input
+                          type="text"
+                          value={editingLayout.name}
+                          onChange={(e) => setEditingLayout({ ...editingLayout, name: e.target.value })}
+                          className="bg-indigo-600 border border-indigo-400 font-semibold px-2 py-0.5 rounded text-xs text-white max-w-[200px] focus:outline-none focus:ring-1 focus:ring-white"
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex flex-col items-center justify-center p-3">
+                      <div className="mb-4 text-center">
+                        <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest block mb-1">
+                          {editingLayout ? '盤面をタップしてペイント' : '5x7 マトリクス盤面'}
+                        </span>
+                        <h2 className="text-lg font-bold text-zinc-800">
+                          {editingLayout ? editingLayout.name : (activeLayout ? activeLayout.name : 'プレビュー')}
+                        </h2>
+                      </div>
+
+                      <ChessGrid
+                        grid={editingLayout ? editingLayout.grid : (activeLayout ? activeLayout.grid : createEmptyGrid(5, 7))}
+                        onCellClick={isManagementMode ? handleLayoutCellClick : undefined}
+                        highlightedCells={highlightedCells}
+                        activeColor={activePaletteColor}
+                        readOnly={!isManagementMode}
+                      />
+
+                      {/* Editing color selector buttons */}
+                      {isManagementMode && (
+                        <div className="mt-5 bg-zinc-50 p-3 rounded-2xl border border-zinc-200/70 w-full max-w-[400px]">
+                          <span className="text-[10px] font-bold text-zinc-400 block tracking-wider uppercase mb-2 text-center">
+                            ペイント用チェス色を選択
+                          </span>
+                          <div className="flex items-center justify-center gap-2.5">
+                            {Object.entries(CHESS_COLOR_TAILWIND).map(([co, details]) => (
+                              <button
+                                key={co}
+                                type="button"
+                                onClick={() => setActivePaletteColor(co)}
+                                style={{ color: details.fontColor }}
+                                className={`
+                                  px-3 py-1.5 rounded-xl text-xs font-bold border flex flex-col items-center justify-center min-w-[50px] transition-all cursor-pointer
+                                  ${details.bg} ${details.text}
+                                  ${activePaletteColor === co 
+                                    ? 'ring-4 ring-indigo-500/25 ring-offset-1 scale-[1.07] border-indigo-600 shadow-sm' 
+                                    : 'opacity-85 border-zinc-150'
+                                  }
+                                `}
+                              >
+                                {details.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Display calculations list */}
+                      {activeChessCounts && !editingLayout && (
+                        <div className="mt-5 bg-zinc-50 p-4 rounded-2xl border border-zinc-200/70 w-full max-w-[400px]">
+                          <span className="text-[10px] font-bold text-zinc-400 block tracking-wider uppercase mb-2">
+                            盤面のチェス所持数 ({Object.values(activeChessCounts).reduce((a,b)=>a+b, 0)}個設置)
+                          </span>
+                          <div className="grid grid-cols-5 gap-1.5 text-center">
+                            {Object.entries(activeChessCounts).map(([co, num]) => {
+                              const details = CHESS_COLOR_TAILWIND[co];
+                              if (!details) return null;
+                              return (
+                                <div key={co} className="bg-white px-1.5 py-2.5 rounded-xl border border-zinc-150/70 shadow-3xs flex flex-col items-center">
+                                  <span className={`w-3 h-3 rounded-full ${details.bg} mb-1 mb-1.5 shadow-sm`}></span>
+                                  <span className="text-[10px] text-zinc-500 font-sans">{details.label}</span>
+                                  <strong className="text-xs font-mono text-zinc-850 font-bold block mt-0.5">{num}個</strong>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Save panel for layout */}
+                      {editingLayout && (
+                        <div className="mt-5 flex gap-3 w-full max-w-[400px]">
+                          <button
+                            onClick={handleSaveLayout}
+                            type="button"
+                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs py-2.5 rounded-xl shadow-xs transition-transform cursor-pointer"
+                          >
+                            盤面変更を保存
+                          </button>
+                          <button
+                            onClick={() => handleDeleteLayout(editingLayout.id)}
+                            type="button"
+                            className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-250 font-bold text-xs px-3.5 py-2.5 rounded-xl transition-all cursor-pointer"
+                          >
+                            削除
+                          </button>
+                          <button
+                            onClick={() => setEditingLayout(null)}
+                            type="button"
+                            className="bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-bold px-3 rounded-xl cursor-pointer"
+                          >
+                            キャンセル
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ACTIVE MATCHES & BUFFS DETAILS */}
+                  {!editingLayout && (
+                    <div className="bg-white rounded-2xl p-5 border border-zinc-200/80 shadow-sm">
+                      <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-4 flex flex-col sm:flex-row sm:items-start justify-between gap-2 border-b border-zinc-150 pb-3">
+                        <span>適用中チェスバフ＆レシピ一覧</span>
+                        <div className="flex flex-wrap items-center gap-1.5 self-end sm:self-auto">
+                          <span className="text-[10px] text-amber-700 font-bold bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-150 flex items-center gap-1 shadow-3xs">
+                            合計スコア: {activeTotalScore.toLocaleString()} pt
+                          </span>
+                          <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-150 flex items-center gap-1">
+                            合計 {activeMatches.length}配置
+                          </span>
+                        </div>
+                      </h3>
+
+                      {activeMatches.length === 0 ? (
+                        <div className="text-center py-7 bg-zinc-50/70 border border-dashed border-zinc-200 rounded-xl">
+                          <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+                            検知された配置レシピはありません。<br/>
+                            チェスを配置するか、レシピ条件を編集してください。
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {sortedActiveMatches.map((m, idx) => {
+                            const localChessCounts = countRecipeChessColors(m.recipe.grid);
+                            const countLabel = Object.entries(localChessCounts)
+                              .filter(([_, num]) => num > 0)
+                              .map(([co, num]) => `${CHESS_COLOR_LABELS[co]}×${num}`)
+                              .join(', ');
+
+                            return (
+                              <div 
+                                key={`${m.recipe.id}-${m.row}-${m.col}-${idx}`}
+                                onMouseEnter={() => handleMouseEnterMatch(m)}
+                                onMouseLeave={handleMouseLeaveMatch}
+                                className="bg-zinc-50 hover:bg-zinc-100/50 rounded-xl p-3.5 border border-zinc-200/80 hover:border-indigo-300 transition-all cursor-help group/match pointer-events-auto"
+                                title="盤面の該当パターンをハイライト"
+                              >
+                                <div className="flex justify-between items-center mb-2 pb-1.5 border-b border-zinc-200/50">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`px-2 py-0.5 text-[9px] rounded font-bold uppercase tracking-wider ${
+                                      m.recipe.target === 'fighter' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
+                                      m.recipe.target === 'rider' ? 'bg-sky-50 text-sky-700 border border-sky-200' :
+                                      m.recipe.target === 'shooter' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                                      'bg-violet-50 text-violet-700 border border-violet-200'
+                                    }`}>
+                                      {TARGET_LABELS[m.recipe.target]}
+                                    </span>
+                                    <span className="text-xs font-bold text-zinc-805">
+                                      {BUFF_TYPE_LABELS[m.recipe.buffType]}
+                                    </span>
+                                  </div>
+                                  <span className="text-xs font-bold text-emerald-600 font-mono">
+                                    +{m.recipe.value}%
+                                  </span>
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-600"></span>
+                                    <span className="text-zinc-700 font-semibold">{m.recipe.name}</span>
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-[9px] text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded shadow-3xs font-bold font-mono">
+                                      {getRecipeScore(m.recipe).toLocaleString()} pt
+                                    </span>
+                                    <span className="text-[9px] text-zinc-500 font-sans bg-white border border-zinc-200 px-1.5 py-0.5 rounded shadow-3xs font-medium">
+                                      位置: {m.row + 1}行目, {m.col + 1}列目
+                                    </span>
+                                    <span className="text-[9px] text-zinc-500 font-mono bg-white border border-zinc-200 px-1.5 py-0.5 rounded shadow-3xs">
+                                      {countLabel}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                </div>
+
+                {/* RIGHT: Recipe definitions container panels */}
+                <div className="md:col-span-6 space-y-6">
+
+                  {/* ACTIVE EDITING / CREATING RECIPE PANEL */}
+                  {editingRecipe && (
+                    <div className="bg-white p-6 rounded-2xl border border-indigo-200 shadow-md relative overflow-hidden ring-2 ring-indigo-500/20">
+                      <div className="absolute top-0 left-0 right-0 py-1.5 bg-indigo-600 text-white text-[10px] font-bold text-center z-10 font-sans">
+                        ● レシピ編集エリア (4x4グリッド)
+                      </div>
+
+                      <form onSubmit={handleSaveRecipe} className="space-y-4 pt-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-bold text-zinc-500 mb-1">
+                              レシピ表示名称
+                            </label>
+                            <input
+                              type="text"
+                              value={editingRecipe.name}
+                              onChange={(e) => setEditingRecipe({ ...editingRecipe, name: e.target.value })}
+                              placeholder="e.g. [Fighter] ATK +20%"
+                              className="w-full text-xs font-semibold bg-zinc-50 border border-zinc-200 text-zinc-800 rounded-lg px-3 py-2 focus:outline-none focus:bg-white focus:border-indigo-500"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-xs font-bold text-zinc-500 mb-1">
+                                効果対象
+                              </label>
+                              <select
+                                value={editingRecipe.target}
+                                onChange={(e) => setEditingRecipe({ ...editingRecipe, target: e.target.value })}
+                                className="w-full text-xs font-bold bg-zinc-50 border border-zinc-200 text-zinc-800 rounded-lg p-2 focus:outline-none"
+                              >
+                                {Object.entries(TARGET_LABELS).map(([k, v]) => (
+                                  <option key={k} value={k}>{v}</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block text-xs font-bold text-zinc-500 mb-1">
+                                バフ種類
+                              </label>
+                              <select
+                                value={editingRecipe.buffType}
+                                onChange={(e) => setEditingRecipe({ ...editingRecipe, buffType: e.target.value })}
+                                className="w-full text-xs font-bold bg-zinc-50 border border-zinc-200 text-zinc-800 rounded-lg p-2 focus:outline-none"
+                              >
+                                {Object.entries(BUFF_TYPE_LABELS).map(([k, v]) => (
+                                  <option key={k} value={k}>{v}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Interactive edit subgrid representation */}
+                        <div className="flex flex-col md:flex-row gap-5 items-center justify-center py-2 bg-zinc-50/50 border border-zinc-150 rounded-xl">
+                          <div className="text-center font-sans space-y-1">
+                            <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest block">
+                              配置形状ペインター
+                            </span>
+                            <p className="text-[10px] text-zinc-500 leading-normal max-w-[150px]">
+                              右の4x4グリッドをタップしてチェス位置をペイント。
+                            </p>
+                          </div>
+
+                          <div className="flex flex-col items-center">
+                            <ChessGrid 
+                              grid={editingRecipe.grid} 
+                              onCellClick={handleRecipeCellClick} 
+                              activeColor={activePaletteColor}
+                            />
+
+                            <div className="w-full mt-3 pt-3 border-t border-zinc-200/60 flex justify-between items-center text-xs">
+                              <span className="text-zinc-500 font-medium">
+                                使用中のチェス数: <strong className="font-mono text-zinc-800 font-bold">{getRecipeChessCount(editingRecipe.grid)}</strong> 個
+                              </span>
+                              <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200/60 font-mono shadow-3xs">
+                                自動計算スコア: <strong className="font-bold text-xs">{getRecipeScore(editingRecipe).toLocaleString()}</strong> pt
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-bold text-zinc-500 mb-1">
+                              バフ上昇率 (%)
+                            </label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={editingRecipe.value}
+                              onChange={(e) => setEditingRecipe({ ...editingRecipe, value: parseFloat(e.target.value) || 0 })}
+                              className="w-full text-xs font-mono bg-zinc-50 border border-zinc-200 text-zinc-800 rounded-lg px-3.5 py-2 focus:outline-none"
+                            />
+                          </div>
+
+                          <div className="flex gap-2 items-end">
+                            <button
+                              type="submit"
+                              className="flex-1 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs py-2.5 rounded-lg shadow-xs transition-colors cursor-pointer"
+                            >
+                              レシピを保存
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingRecipe(null)}
+                              className="bg-zinc-100 hover:bg-zinc-200 text-zinc-600 text-xs font-bold px-4 py-2.5 rounded-lg cursor-pointer"
+                            >
+                              リセット
+                            </button>
+                          </div>
+                        </div>
+                      </form>
+                    </div>
+                  )}
+
+                  {/* REGISTERED PATTERN RECIPES MASTER LIST */}
+                  <div className="bg-white rounded-2xl p-5 border border-zinc-200/85 shadow-sm">
+                    <div className="flex justify-between items-center mb-4 pb-2 border-b border-zinc-150">
+                      <div>
+                        <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest block">
+                          レシピ一覧・登録マスター
+                        </h3>
+                        <span className="text-[10px] text-zinc-450 mt-0.5 block font-medium">合計 {recipes.length}種類 登録中</span>
+                      </div>
+
+                      {isManagementMode && !editingRecipe && (
+                        <button
+                          onClick={startCreateRecipe}
+                          type="button"
+                          className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition-all cursor-pointer shadow-xs font-sans"
+                        >
+                          ＋ レシピを追加
+                        </button>
+                      )}
+                    </div>
+
+                    {recipes.length === 0 ? (
+                      <p className="text-xs text-zinc-400 text-center py-8">登録済みのレシピはありません。</p>
+                    ) : (
+                      <div className="space-y-2.5 max-h-[450px] overflow-y-auto pr-1">
+                        {recipes.map(re => {
+                          const score = getRecipeScore(re);
+                          const chessCount = getRecipeChessCount(re.grid);
+                          return (
+                            <div 
+                              key={re.id}
+                              className={`p-3 rounded-xl border flex flex-col gap-2 transition-all
+                                ${editingRecipe?.id === re.id 
+                                  ? 'bg-indigo-50/50 border-indigo-300' 
+                                  : 'bg-zinc-50 hover:bg-zinc-100/50 border-zinc-200/80'
+                                }
+                              `}
+                            >
+                              <div className="flex justify-between items-start gap-2">
+                                <div className="truncate">
+                                  <span className="text-xs font-bold text-zinc-800 block truncate">{re.name}</span>
+                                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                    <span className="text-[9px] px-1.5 py-0.5 bg-zinc-250 text-zinc-700 font-bold rounded">
+                                      {TARGET_LABELS[re.target]}
+                                    </span>
+                                    <span className="text-[9px] px-1.5 py-0.5 bg-amber-50 text-amber-700 font-bold border border-amber-200 rounded font-mono shadow-3xs">
+                                      {score.toLocaleString()} pt
+                                    </span>
+                                    <span className="text-[9px] text-zinc-450 font-medium">
+                                      チェス:{chessCount}個
+                                    </span>
+                                    <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wide">
+                                      {BUFF_TYPE_LABELS[re.buffType]} +{re.value}%
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="flex gap-1 shrink-0">
+                                  <button
+                                    onClick={() => {
+                                      // Render hover grid matching coordinates manually
+                                      const dummyMatch = { recipe: re, row: 0, col: 0 };
+                                      handleMouseEnterMatch(dummyMatch);
+                                    }}
+                                    onMouseLeave={handleMouseLeaveMatch}
+                                    className="p-1 px-1.5 text-zinc-400 hover:text-indigo-600 hover:bg-white rounded border border-transparent hover:border-zinc-200 flex items-center gap-0.5 transition-all text-[10px]"
+                                    title="パターンを簡易確認します"
+                                  >
+                                    形状表示
+                                  </button>
+
+                                  {isManagementMode && (
+                                    <>
+                                      <button
+                                        onClick={() => setEditingRecipe({ ...re })}
+                                        className="p-1 text-zinc-400 hover:text-indigo-600 hover:bg-white rounded border border-transparent hover:border-zinc-200 transition-colors"
+                                        title="レシピを編集"
+                                      >
+                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteRecipe(re.id)}
+                                        className="p-1 text-zinc-400 hover:text-rose-600 hover:bg-white rounded border border-transparent hover:border-zinc-250 transition-colors"
+                                        title="レシピを削除"
+                                      >
+                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Quick export / backup JSON */}
+                    <div className="mt-4 pt-3 border-t border-zinc-150 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <span className="text-[10px] text-zinc-400 block max-w-xs leading-normal">
+                        ローカルデータの簡易エクスポートが可能です。コピーしてバックアップとしてお使いください。
+                      </span>
+                      <button
+                        onClick={() => {
+                          const schema = { recipes, layouts, pin };
+                          const blob = new Blob([JSON.stringify(schema, null, 2)], { type: 'application/json' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `chess_backup_${Date.now()}.json`;
+                          a.click();
+                        }}
+                        className="text-[10px] bg-zinc-100 hover:bg-zinc-200 text-zinc-700 py-1.5 px-3 rounded-lg font-bold border border-zinc-200 shrink-0 self-end transition-all"
+                      >
+                        JSONとしてエクスポート
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* ADVANCED CLOUD GITHUB SYNCHRONIZER */}
+                  <GitHubConfigPanel
+                    config={githubConfig}
+                    onSaveConfig={handleGithubConfigSave}
+                    onPull={handleGithubPull}
+                    onPush={handleGithubPush}
+                    statusMsg={syncStatus}
+                    loading={syncLoading}
+                  />
+
+                  {/* SECURITY / PASSWORD CONFIGURE IF IN EDIT MODE */}
+                  {isManagementMode && (
+                    <div className="bg-white p-5 rounded-2xl border border-zinc-200/85">
+                      <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-3">
+                        セキュリティPINコード変更
+                      </h4>
+                      <form onSubmit={handlePinChangeSubmit} className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="新しいPINを設定 (e.g. 5678)"
+                          value={newPin}
+                          onChange={(e) => setNewPin(e.target.value)}
+                          className="bg-zinc-50 border border-zinc-200 text-xs px-3.5 py-2.5 rounded-xl font-mono text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-indigo-500 font-semibold focus:ring-1 focus:ring-indigo-500"
+                        />
+                        <button
+                          type="submit"
+                          className="bg-zinc-800 hover:bg-zinc-900 text-xs text-white font-bold px-4 py-2.5 rounded-xl transition-all shadow-xs cursor-pointer"
+                        >
+                          変更する
+                        </button>
+                      </form>
+                      {pinChangeSuccess && (
+                        <p className="text-[10px] text-emerald-600 font-bold block mt-1.5 font-sans">
+                          ✓ PINを変更しました。新しいPIN: {pin}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                </div>
+
+              </div>
+            </main>
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App />);
+    </script>
+  </body>
 </html>
