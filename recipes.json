@@ -684,7 +684,7 @@
   "layouts": [
     {
       "id": "layout-1",
-      "name": "ファイター/ライダー ★オススメ",
+      "name": "ファイター/ライダー ★★★オススメ",
       "grid": [
         [
           "blue",
@@ -736,7 +736,7 @@
     },
     {
       "id": "layout-1780975978192",
-      "name": "ファイター/シューター ★オススメ",
+      "name": "ファイター/シューター ★★★オススメ",
       "grid": [
         [
           "red",
@@ -785,6 +785,318 @@
         ]
       ],
       "createdAt": 1780975978192
+    },
+    {
+      "id": "layout_1780979545689",
+      "name": "ライダー/シューター ★オススメ1",
+      "grid": [
+        [
+          "blue",
+          "blue",
+          "blue",
+          "blue",
+          "empty",
+          "yellow",
+          "purple"
+        ],
+        [
+          "blue",
+          "red",
+          "red",
+          "red",
+          "red",
+          "yellow",
+          "purple"
+        ],
+        [
+          "blue",
+          "red",
+          "red",
+          "green",
+          "blue",
+          "yellow",
+          "purple"
+        ],
+        [
+          "blue",
+          "red",
+          "yellow",
+          "yellow",
+          "yellow",
+          "yellow",
+          "purple"
+        ],
+        [
+          "empty",
+          "red",
+          "purple",
+          "purple",
+          "purple",
+          "purple",
+          "empty"
+        ]
+      ],
+      "createdAt": 1780979545689
+    },
+    {
+      "id": "layout_1780979863121",
+      "name": "ライダー/シューター ★オススメ2",
+      "grid": [
+        [
+          "empty",
+          "red",
+          "red",
+          "red",
+          "red",
+          "yellow",
+          "purple"
+        ],
+        [
+          "red",
+          "blue",
+          "blue",
+          "blue",
+          "blue",
+          "yellow",
+          "purple"
+        ],
+        [
+          "red",
+          "blue",
+          "red",
+          "green",
+          "blue",
+          "yellow",
+          "purple"
+        ],
+        [
+          "red",
+          "blue",
+          "yellow",
+          "yellow",
+          "yellow",
+          "yellow",
+          "purple"
+        ],
+        [
+          "red",
+          "blue",
+          "purple",
+          "purple",
+          "purple",
+          "purple",
+          "empty"
+        ]
+      ],
+      "createdAt": 1780979863122
+    },
+    {
+      "id": "layout_1780980165477",
+      "name": "ATK優先",
+      "grid": [
+        [
+          "blue",
+          "blue",
+          "blue",
+          "blue",
+          "yellow",
+          "purple",
+          "red"
+        ],
+        [
+          "blue",
+          "green",
+          "red",
+          "green",
+          "green",
+          "green",
+          "green"
+        ],
+        [
+          "blue",
+          "green",
+          "red",
+          "red",
+          "red",
+          "red",
+          "blue"
+        ],
+        [
+          "blue",
+          "green",
+          "red",
+          "yellow",
+          "yellow",
+          "yellow",
+          "yellow"
+        ],
+        [
+          "empty",
+          "green",
+          "red",
+          "purple",
+          "purple",
+          "purple",
+          "purple"
+        ]
+      ],
+      "createdAt": 1780980165477
+    },
+    {
+      "id": "layout_1780980531099",
+      "name": "ライダー優先",
+      "grid": [
+        [
+          "empty",
+          "red",
+          "red",
+          "red",
+          "red",
+          "yellow",
+          "purple"
+        ],
+        [
+          "blue",
+          "green",
+          "green",
+          "green",
+          "green",
+          "yellow",
+          "purple"
+        ],
+        [
+          "blue",
+          "blue",
+          "blue",
+          "blue",
+          "blue",
+          "yellow",
+          "purple"
+        ],
+        [
+          "blue",
+          "green",
+          "yellow",
+          "yellow",
+          "yellow",
+          "yellow",
+          "purple"
+        ],
+        [
+          "blue",
+          "red",
+          "purple",
+          "purple",
+          "purple",
+          "purple",
+          "empty"
+        ]
+      ],
+      "createdAt": 1780980531099
+    },
+    {
+      "id": "layout_1780980727815",
+      "name": "シューター優先",
+      "grid": [
+        [
+          "empty",
+          "blue",
+          "blue",
+          "blue",
+          "blue",
+          "yellow",
+          "purple"
+        ],
+        [
+          "red",
+          "green",
+          "green",
+          "green",
+          "green",
+          "yellow",
+          "purple"
+        ],
+        [
+          "red",
+          "red",
+          "red",
+          "red",
+          "red",
+          "yellow",
+          "purple"
+        ],
+        [
+          "red",
+          "green",
+          "yellow",
+          "yellow",
+          "yellow",
+          "yellow",
+          "purple"
+        ],
+        [
+          "red",
+          "blue",
+          "purple",
+          "purple",
+          "purple",
+          "purple",
+          "empty"
+        ]
+      ],
+      "createdAt": 1780980727815
+    },
+    {
+      "id": "layout_1780980823671",
+      "name": "ファイター優先",
+      "grid": [
+        [
+          "green",
+          "blue",
+          "blue",
+          "blue",
+          "blue",
+          "yellow",
+          "purple"
+        ],
+        [
+          "green",
+          "red",
+          "red",
+          "red",
+          "red",
+          "yellow",
+          "purple"
+        ],
+        [
+          "green",
+          "green",
+          "green",
+          "green",
+          "green",
+          "yellow",
+          "purple"
+        ],
+        [
+          "green",
+          "blue",
+          "yellow",
+          "yellow",
+          "yellow",
+          "yellow",
+          "purple"
+        ],
+        [
+          "blue",
+          "green",
+          "red",
+          "purple",
+          "purple",
+          "purple",
+          "purple"
+        ]
+      ],
+      "createdAt": 1780980823671
     }
   ],
   "githubConfig": {
