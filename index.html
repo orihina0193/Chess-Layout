@@ -545,7 +545,7 @@
             result.recipes = DEFAULT_RECIPES;
           }
 
-          if (rawData.layouts && Array.isArray(rawData.layouts)) {
+          if (rawData.layouts && Array.isArray(rawData.layouts) && rawData.layouts.length > 0) {
             result.layouts = rawData.layouts;
           } else {
             result.layouts = DEFAULT_LAYOUTS;
@@ -1058,6 +1058,16 @@
           }
         }, []);
 
+        // Keep selectedLayoutId pointing to a valid layout
+        useEffect(() => {
+          if (layouts.length > 0) {
+            const exists = layouts.some(l => l.id === selectedLayoutId);
+            if (!exists) {
+              setSelectedLayoutId(layouts[0].id);
+            }
+          }
+        }, [layouts, selectedLayoutId]);
+
         // Save to local storage on modification
         const saveStateLocally = (updatedRecipes, updatedLayouts, updatedPin, updatedGithub) => {
           const schema = {
@@ -1174,7 +1184,7 @@
         };
 
         // Layout helpers
-        const activeLayout = useMemo(() => layouts.find(l => l.id === selectedLayoutId), [layouts, selectedLayoutId]);
+        const activeLayout = useMemo(() => layouts.find(l => l.id === selectedLayoutId) || layouts[0] || null, [layouts, selectedLayoutId]);
 
         // Pattern matching solver results
         const activeMatches = useMemo(() => {
@@ -1930,14 +1940,16 @@
                   </div>
 
                   {/* ADVANCED CLOUD GITHUB SYNCHRONIZER */}
-                  <GitHubConfigPanel
-                    config={githubConfig}
-                    onSaveConfig={handleGithubConfigSave}
-                    onPull={handleGithubPull}
-                    onPush={handleGithubPush}
-                    statusMsg={syncStatus}
-                    loading={syncLoading}
-                  />
+                  {isManagementMode && (
+                    <GitHubConfigPanel
+                      config={githubConfig}
+                      onSaveConfig={handleGithubConfigSave}
+                      onPull={handleGithubPull}
+                      onPush={handleGithubPush}
+                      statusMsg={syncStatus}
+                      loading={syncLoading}
+                    />
+                  )}
 
                   {/* SECURITY / PASSWORD CONFIGURE IF IN EDIT MODE */}
                   {isManagementMode && (
