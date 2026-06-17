@@ -64,7 +64,8 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <!-- Transpiled React JSX application -->
-    <script type="text/babel" data-type="module" data-presets="react,env">
+    <script type="text/babel">
+      /** @jsxRuntime classic */
       const { useState, useEffect, useMemo, useRef } = React;
 
       // Type labels
