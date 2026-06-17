@@ -62,10 +62,16 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script>
+      Babel.registerPreset('custom-react', {
+        presets: [
+          [Babel.availablePresets['react'], { runtime: 'classic' }]
+        ]
+      });
+    </script>
 
     <!-- Transpiled React JSX application -->
-    <script type="text/babel">
-      /** @jsxRuntime classic */
+    <script type="text/babel" data-presets="custom-react">
       const { useState, useEffect, useMemo, useRef } = React;
 
       // Type labels
