@@ -1182,15 +1182,15 @@
                     </div>
                     <p className="text-[10px] text-zinc-400 text-center">✓の項目をタップすると、盤面上の該当位置が光ります。</p>
 
-                    <div className="flex flex-col sm:flex-row gap-2 pt-1">
-                      <input
-                        type="text"
-                        value={layoutName}
-                        onChange={(e) => setLayoutName(e.target.value)}
-                        placeholder="盤面名"
-                        className="flex-1 text-xs font-semibold bg-zinc-50 border border-zinc-200 text-zinc-800 rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500"
-                      />
-                      {isManagementMode && (
+                    {isManagementMode && (
+                      <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                        <input
+                          type="text"
+                          value={layoutName}
+                          onChange={(e) => setLayoutName(e.target.value)}
+                          placeholder="盤面名"
+                          className="flex-1 text-xs font-semibold bg-zinc-50 border border-zinc-200 text-zinc-800 rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500"
+                        />
                         <button
                           type="button"
                           onClick={() => onSaveLayout(layoutName || '自動提案', result.grid)}
@@ -1198,17 +1198,14 @@
                         >
                           盤面として保存
                         </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={handleCopy}
-                        className="bg-zinc-100 hover:bg-zinc-200 text-zinc-700 border border-zinc-200 text-xs font-bold px-3.5 py-2 rounded-lg cursor-pointer"
-                      >
-                        {copied ? '✓ コピー済み' : 'JSONをコピー'}
-                      </button>
-                    </div>
-                    {!isManagementMode && (
-                      <p className="text-[10px] text-zinc-400">※ 盤面の保存は管理者モードで行えます。</p>
+                        <button
+                          type="button"
+                          onClick={handleCopy}
+                          className="bg-zinc-100 hover:bg-zinc-200 text-zinc-700 border border-zinc-200 text-xs font-bold px-3.5 py-2 rounded-lg cursor-pointer"
+                        >
+                          {copied ? '✓ コピー済み' : 'JSONをコピー'}
+                        </button>
+                      </div>
                     )}
                   </div>
                 )}
