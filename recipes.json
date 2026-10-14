@@ -1097,6 +1097,110 @@
         ]
       ],
       "createdAt": 1780980823671
+    },
+    {
+      "id": "layout_1791955114520",
+      "name": "シューター",
+      "grid": [
+        [
+          "red",
+          "red",
+          "red",
+          "red",
+          "blue",
+          "yellow",
+          "purple"
+        ],
+        [
+          "red",
+          "green",
+          "green",
+          "green",
+          "green",
+          "yellow",
+          "purple"
+        ],
+        [
+          "red",
+          "green",
+          "blue",
+          "green",
+          "red",
+          "yellow",
+          "purple"
+        ],
+        [
+          "red",
+          "green",
+          "yellow",
+          "yellow",
+          "yellow",
+          "yellow",
+          "purple"
+        ],
+        [
+          "empty",
+          "green",
+          "purple",
+          "purple",
+          "purple",
+          "purple",
+          "empty"
+        ]
+      ],
+      "createdAt": 1791955114520
+    },
+    {
+      "id": "layout_1791955580104",
+      "name": "ライダー/シューター ★1オススメ3",
+      "grid": [
+        [
+          "blue",
+          "red",
+          "red",
+          "red",
+          "red",
+          "green",
+          "blue"
+        ],
+        [
+          "blue",
+          "blue",
+          "blue",
+          "blue",
+          "yellow",
+          "purple",
+          "red"
+        ],
+        [
+          "blue",
+          "blue",
+          "green",
+          "red",
+          "yellow",
+          "purple",
+          "red"
+        ],
+        [
+          "blue",
+          "yellow",
+          "yellow",
+          "yellow",
+          "yellow",
+          "purple",
+          "red"
+        ],
+        [
+          "purple",
+          "purple",
+          "purple",
+          "purple",
+          "yellow",
+          "purple",
+          "red"
+        ]
+      ],
+      "createdAt": 1791955580104
     }
   ],
   "githubConfig": {
